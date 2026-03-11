@@ -11,7 +11,7 @@ import systemPromptRaw from './prompts/system_prompt.md?raw'
 const SYSTEM_PROMPT = systemPromptRaw
 
 export class BeeAgent extends EventTarget {
-  private config: Required<AgentConfig>
+  private config: Required<Omit<AgentConfig, 'onAskUser'>> & Pick<AgentConfig, 'onAskUser'>
   private domEngine: DOMEngine
   private llmClient: LLMClient
   private status: AgentStatus = 'idle'
@@ -79,7 +79,7 @@ export class BeeAgent extends EventTarget {
     this.memory = { content: [], maxItems: 10 }
     this.abortController = new AbortController()
 
-    const tools = createTools(this.domEngine)
+    const tools = createTools(this.domEngine, { onAskUser: this.config.onAskUser })
 
     try {
       for (let stepIndex = 0; stepIndex < this.config.maxSteps; stepIndex++) {

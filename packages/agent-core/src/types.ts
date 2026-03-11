@@ -25,6 +25,8 @@ export interface AgentConfig {
   maxSteps?: number
   /** 系统提示词 */
   systemPrompt?: string
+  /** ask_user 工具回调 */
+  onAskUser?: (question: string) => Promise<string>
 }
 
 export type AgentStatus = 'idle' | 'running' | 'completed' | 'error'

@@ -3,9 +3,9 @@
  */
 
 import type { DOMEngine } from '@bee-agent/dom-engine'
-import type { AgentTool } from './types'
+import type { AgentTool, AgentConfig } from './types'
 
-export function createTools(domEngine: DOMEngine): AgentTool[] {
+export function createTools(domEngine: DOMEngine, config?: Pick<AgentConfig, 'onAskUser'>): AgentTool[] {
   return [
     {
       name: 'click',
@@ -181,9 +181,12 @@ export function createTools(domEngine: DOMEngine): AgentTool[] {
         },
         required: ['question']
       },
-      execute: async (_input: { question: string }) => {
-        // This will be handled by the agent's onAskUser callback
-        throw new Error('ask_user tool requires onAskUser callback to be set in agent config')
+      execute: async (input: { question: string }) => {
+        if (config?.onAskUser) {
+          const answer = await config.onAskUser(input.question)
+          return `User answered: ${answer}`
+        }
+        return 'ask_user tool is not available. The agent cannot ask questions in this context. Please provide all necessary information upfront.'
       }
     },
     {
