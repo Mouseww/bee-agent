@@ -3,15 +3,13 @@
  */
 
 import { BeeAgent } from '@bee-agent/agent-core'
-import { DOMEngine } from '@bee-agent/dom-engine'
-import { LLMClient } from '@bee-agent/llm-client'
 import { mountBeeAgentUI } from '@bee-agent/ui'
 
 let agent: BeeAgent | null = null
 let unmountUI: (() => void) | null = null
 
 // 监听来自 popup 的消息
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.action === 'activate') {
     activateBeeAgent()
     sendResponse({ success: true })
@@ -48,19 +46,11 @@ async function activateBeeAgent() {
       return
     }
 
-    // 初始化组件
-    const domEngine = new DOMEngine()
-    const llmClient = new LLMClient({
+    // 创建 Agent
+    agent = new BeeAgent({
       apiKey: config.apiKey,
       model: config.model || 'gpt-4',
       baseURL: 'https://api.openai.com/v1'
-    })
-
-    // 创建 Agent
-    agent = new BeeAgent({
-      domEngine,
-      llmClient,
-      language: config.language || 'zh-CN'
     })
 
     // 挂载 UI
@@ -69,7 +59,8 @@ async function activateBeeAgent() {
     console.log('BeeAgent 已激活')
   } catch (error) {
     console.error('激活 BeeAgent 失败:', error)
-    alert('激活失败: ' + error.message)
+    const message = error instanceof Error ? error.message : String(error)
+    alert('激活失败: ' + message)
   }
 }
 

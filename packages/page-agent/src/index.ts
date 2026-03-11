@@ -4,8 +4,6 @@
  */
 
 import { BeeAgent } from '@bee-agent/agent-core'
-import { DOMEngine } from '@bee-agent/dom-engine'
-import { LLMClient } from '@bee-agent/llm-client'
 import { mountBeeAgentUI } from '@bee-agent/ui'
 
 // 全局命名空间
@@ -46,19 +44,11 @@ function initBeeAgent(config: BeeAgentConfig) {
       config.apiKey = apiKey
     }
 
-    // 初始化组件
-    const domEngine = new DOMEngine()
-    const llmClient = new LLMClient({
+    // 创建 Agent
+    const agent = new BeeAgent({
       apiKey: config.apiKey,
       model: config.model || 'gpt-4',
       baseURL: config.baseURL || 'https://api.openai.com/v1'
-    })
-
-    // 创建 Agent
-    const agent = new BeeAgent({
-      domEngine,
-      llmClient,
-      language: config.language || 'zh-CN'
     })
 
     // 挂载 UI

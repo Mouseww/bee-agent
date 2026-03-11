@@ -2,7 +2,7 @@
  * DOM Parser 单元测试
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { elementsToText, cleanupHighlights, parseDOM, getPageInfo } from '../parser'
 import type { InteractiveElement } from '../types'
 

@@ -103,8 +103,9 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
 
   // 拖拽功能
   useEffect(() => {
+    if (!isDragging) return
+
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return
       setPosition({
         x: e.clientX - dragOffset.x,
         y: e.clientY - dragOffset.y
@@ -115,13 +116,11 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
       setIsDragging(false)
     }
 
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove)
-      window.addEventListener('mouseup', handleMouseUp)
-      return () => {
-        window.removeEventListener('mousemove', handleMouseMove)
-        window.removeEventListener('mouseup', handleMouseUp)
-      }
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
     }
   }, [isDragging, dragOffset])
 

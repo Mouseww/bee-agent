@@ -18,7 +18,7 @@ chrome.action.onClicked.addListener(async (tab) => {
 })
 
 // 监听来自 content script 的消息
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
   if (message.action === 'log') {
     console.log('[BeeAgent]', message.data)
   }
