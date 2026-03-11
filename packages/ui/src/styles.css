@@ -4,8 +4,6 @@
 
 .bee-agent-container {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
   width: 400px;
   max-height: 600px;
   background: white;
@@ -16,6 +14,13 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   z-index: 999999;
   overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.bee-agent-container[data-theme="dark"] {
+  background: #1e1e1e;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  color: #e0e0e0;
 }
 
 .bee-agent-header {
@@ -26,6 +31,36 @@
   justify-content: space-between;
   align-items: center;
   cursor: move;
+  user-select: none;
+}
+
+.bee-agent-container[data-theme="dark"] .bee-agent-header {
+  background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+}
+
+.bee-agent-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.bee-agent-icon-button {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.bee-agent-icon-button:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .bee-agent-title {
@@ -64,6 +99,11 @@
   overflow-y: auto;
   padding: 16px;
   background: #f8f9fa;
+  min-height: 300px;
+}
+
+.bee-agent-container[data-theme="dark"] .bee-agent-messages {
+  background: #2d2d2d;
 }
 
 .bee-agent-message {
@@ -72,6 +112,27 @@
   border-radius: 8px;
   font-size: 14px;
   line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.bee-agent-message strong {
+  font-weight: 600;
+}
+
+.bee-agent-message em {
+  font-style: italic;
+}
+
+.bee-agent-message code {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+.bee-agent-container[data-theme="dark"] .bee-agent-message code {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .bee-agent-message-user {
@@ -87,6 +148,12 @@
   border: 1px solid #e0e0e0;
 }
 
+.bee-agent-container[data-theme="dark"] .bee-agent-message-assistant {
+  background: #3a3a3a;
+  color: #e0e0e0;
+  border-color: #4a4a4a;
+}
+
 .bee-agent-message-system {
   background: #fff3cd;
   color: #856404;
@@ -94,30 +161,190 @@
   text-align: center;
 }
 
-.bee-agent-step {
-  margin-bottom: 8px;
-  padding: 10px;
+.bee-agent-container[data-theme="dark"] .bee-agent-message-system {
+  background: #4a4a2a;
+  color: #f0e68c;
+}
+
+/* 时间线样式 */
+.bee-agent-timeline {
+  margin-top: 16px;
+  padding: 12px;
   background: white;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.bee-agent-container[data-theme="dark"] .bee-agent-timeline {
+  background: #3a3a3a;
+  border-color: #4a4a4a;
+}
+
+.bee-agent-timeline h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.bee-agent-container[data-theme="dark"] .bee-agent-timeline h4 {
+  color: #8b9cff;
+}
+
+.bee-agent-step {
+  margin-bottom: 12px;
+  padding: 12px;
+  background: #f8f9fa;
   border-radius: 6px;
   border-left: 3px solid #667eea;
   font-size: 13px;
 }
 
+.bee-agent-container[data-theme="dark"] .bee-agent-step {
+  background: #2d2d2d;
+  border-left-color: #8b9cff;
+}
+
+.bee-agent-step-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
 .bee-agent-step-index {
   font-weight: 600;
   color: #667eea;
-  margin-bottom: 4px;
 }
 
-.bee-agent-step-action {
+.bee-agent-container[data-theme="dark"] .bee-agent-step-index {
+  color: #8b9cff;
+}
+
+.bee-agent-step-time {
+  font-size: 11px;
+  color: #999;
+}
+
+.bee-agent-step-thought {
+  margin-bottom: 6px;
+  color: #555;
+  line-height: 1.4;
+}
+
+.bee-agent-container[data-theme="dark"] .bee-agent-step-thought {
+  color: #ccc;
+}
+
+.bee-agent-step-action,
+.bee-agent-step-output {
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: white;
+  border-radius: 4px;
   color: #666;
-  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.bee-agent-container[data-theme="dark"] .bee-agent-step-action,
+.bee-agent-container[data-theme="dark"] .bee-agent-step-output {
+  background: #1e1e1e;
+  color: #aaa;
+}
+
+.bee-agent-step-action code,
+.bee-agent-step-output code {
+  background: #f0f0f0;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.bee-agent-container[data-theme="dark"] .bee-agent-step-action code,
+.bee-agent-container[data-theme="dark"] .bee-agent-step-output code {
+  background: #3a3a3a;
+}
+
+/* 设置面板样式 */
+.bee-agent-settings {
+  padding: 20px;
+  background: white;
+  overflow-y: auto;
+  max-height: 500px;
+}
+
+.bee-agent-container[data-theme="dark"] .bee-agent-settings {
+  background: #2d2d2d;
+}
+
+.bee-agent-settings h4 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.bee-agent-container[data-theme="dark"] .bee-agent-settings h4 {
+  color: #e0e0e0;
+}
+
+.bee-agent-settings-item {
+  margin-bottom: 16px;
+}
+
+.bee-agent-settings-item label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+}
+
+.bee-agent-container[data-theme="dark"] .bee-agent-settings-item label {
+  color: #ccc;
+}
+
+.bee-agent-settings-item input,
+.bee-agent-settings-item select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+  background: white;
+  color: #333;
+}
+
+.bee-agent-container[data-theme="dark"] .bee-agent-settings-item input,
+.bee-agent-container[data-theme="dark"] .bee-agent-settings-item select {
+  background: #3a3a3a;
+  border-color: #4a4a4a;
+  color: #e0e0e0;
+}
+
+.bee-agent-settings-item input:focus,
+.bee-agent-settings-item select:focus {
+  border-color: #667eea;
+}
+
+.bee-agent-settings-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
 }
 
 .bee-agent-input-container {
   padding: 16px;
   background: white;
   border-top: 1px solid #e0e0e0;
+}
+
+.bee-agent-container[data-theme="dark"] .bee-agent-input-container {
+  background: #2d2d2d;
+  border-top-color: #4a4a4a;
 }
 
 .bee-agent-input-wrapper {
@@ -133,6 +360,14 @@
   font-size: 14px;
   outline: none;
   transition: border-color 0.2s;
+  background: white;
+  color: #333;
+}
+
+.bee-agent-container[data-theme="dark"] .bee-agent-input {
+  background: #3a3a3a;
+  border-color: #4a4a4a;
+  color: #e0e0e0;
 }
 
 .bee-agent-input:focus {
@@ -142,6 +377,10 @@
 .bee-agent-input:disabled {
   background: #f5f5f5;
   cursor: not-allowed;
+}
+
+.bee-agent-container[data-theme="dark"] .bee-agent-input:disabled {
+  background: #1e1e1e;
 }
 
 .bee-agent-button {
@@ -163,6 +402,14 @@
 .bee-agent-button:disabled {
   background: #ccc;
   cursor: not-allowed;
+}
+
+.bee-agent-button-secondary {
+  background: #6c757d;
+}
+
+.bee-agent-button-secondary:hover:not(:disabled) {
+  background: #5a6268;
 }
 
 .bee-agent-button-stop {
@@ -188,19 +435,33 @@
 }
 
 /* 滚动条样式 */
-.bee-agent-messages::-webkit-scrollbar {
+.bee-agent-messages::-webkit-scrollbar,
+.bee-agent-settings::-webkit-scrollbar {
   width: 6px;
 }
 
-.bee-agent-messages::-webkit-scrollbar-track {
+.bee-agent-messages::-webkit-scrollbar-track,
+.bee-agent-settings::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.bee-agent-messages::-webkit-scrollbar-thumb {
+.bee-agent-messages::-webkit-scrollbar-thumb,
+.bee-agent-settings::-webkit-scrollbar-thumb {
   background: #ccc;
   border-radius: 3px;
 }
 
-.bee-agent-messages::-webkit-scrollbar-thumb:hover {
+.bee-agent-messages::-webkit-scrollbar-thumb:hover,
+.bee-agent-settings::-webkit-scrollbar-thumb:hover {
   background: #999;
+}
+
+.bee-agent-container[data-theme="dark"] .bee-agent-messages::-webkit-scrollbar-thumb,
+.bee-agent-container[data-theme="dark"] .bee-agent-settings::-webkit-scrollbar-thumb {
+  background: #555;
+}
+
+.bee-agent-container[data-theme="dark"] .bee-agent-messages::-webkit-scrollbar-thumb:hover,
+.bee-agent-container[data-theme="dark"] .bee-agent-settings::-webkit-scrollbar-thumb:hover {
+  background: #666;
 }
