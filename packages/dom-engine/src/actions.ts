@@ -122,6 +122,102 @@ export async function scrollHorizontal(pixels: number, element?: Element): Promi
 }
 
 /**
+ * 悬停在元素上
+ */
+export async function hoverElement(element: Element): Promise<void> {
+  if (!(element instanceof HTMLElement)) {
+    throw new Error('Element is not hoverable')
+  }
+
+  // 滚动到元素位置
+  element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  await new Promise(resolve => setTimeout(resolve, 300))
+
+  // 触发悬停事件
+  const mouseEnterEvent = new MouseEvent('mouseenter', { bubbles: true, cancelable: true })
+  const mouseOverEvent = new MouseEvent('mouseover', { bubbles: true, cancelable: true })
+
+  element.dispatchEvent(mouseEnterEvent)
+  element.dispatchEvent(mouseOverEvent)
+
+  await new Promise(resolve => setTimeout(resolve, 100))
+}
+
+/**
+ * 按键模拟
+ */
+export async function pressKey(element: Element, key: string): Promise<void> {
+  if (!(element instanceof HTMLElement)) {
+    throw new Error('Element does not support keyboard input')
+  }
+
+  element.focus()
+  await new Promise(resolve => setTimeout(resolve, 100))
+
+  // 触发键盘事件
+  const keyDownEvent = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    cancelable: true
+  })
+  const keyPressEvent = new KeyboardEvent('keypress', {
+    key,
+    bubbles: true,
+    cancelable: true
+  })
+  const keyUpEvent = new KeyboardEvent('keyup', {
+    key,
+    bubbles: true,
+    cancelable: true
+  })
+
+  element.dispatchEvent(keyDownEvent)
+  element.dispatchEvent(keyPressEvent)
+  element.dispatchEvent(keyUpEvent)
+
+  await new Promise(resolve => setTimeout(resolve, 50))
+}
+
+/**
+ * 等待元素出现
+ */
+export async function waitForElement(
+  selector: string,
+  timeout = 5000
+): Promise<Element> {
+  const startTime = Date.now()
+
+  while (Date.now() - startTime < timeout) {
+    const element = document.querySelector(selector)
+
+    if (element) {
+      // 检查元素是否可见
+      if (element instanceof HTMLElement) {
+        const style = window.getComputedStyle(element)
+        if (style.display !== 'none' && style.visibility !== 'hidden') {
+          return element
+        }
+      } else {
+        return element
+      }
+    }
+
+    // 等待一小段时间后重试
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
+
+  throw new Error(`Element "${selector}" not found within ${timeout}ms`)
+}
+
+/**
+ * 等待指定时间
+ */
+export async function wait(seconds: number): Promise<string> {
+  await new Promise(resolve => setTimeout(resolve, seconds * 1000))
+  return `Waited for ${seconds} seconds`
+}
+
+/**
  * 根据索引获取元素
  */
 export function getElementByIndex(elements: InteractiveElement[], index: number): Element {

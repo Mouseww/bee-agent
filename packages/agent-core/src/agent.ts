@@ -4,29 +4,11 @@
 
 import { DOMEngine } from '@bee-agent/dom-engine'
 import { LLMClient } from '@bee-agent/llm-client'
-import type { AgentConfig, AgentStatus, AgentStep, ExecutionResult } from './types'
+import type { AgentConfig, AgentStatus, AgentStep, ExecutionResult, AgentMemory, ReflectionResult } from './types'
 import { createTools } from './tools'
+import systemPromptRaw from './prompts/system_prompt.md?raw'
 
-const DEFAULT_SYSTEM_PROMPT = `You are BeeAgent, an AI assistant that can control web pages.
-
-You follow the Re-Act (Reasoning and Acting) pattern:
-1. Observe: Analyze the current page state
-2. Think: Reason about what action to take
-3. Act: Execute the action
-4. Loop: Repeat until task is complete
-
-Available actions:
-- click(index): Click an element
-- type(index, text): Type text into an input
-- select(index, option): Select a dropdown option
-- scroll(direction, pages): Scroll the page
-- done(success, message): Complete the task
-
-Always respond with:
-1. Thought: Your reasoning about the current situation
-2. Action: The action to take (must be one of the available actions)
-
-When the task is complete, call done() with a summary.`
+const SYSTEM_PROMPT = systemPromptRaw
 
 export class BeeAgent extends EventTarget {
   private config: Required<AgentConfig>
@@ -35,13 +17,14 @@ export class BeeAgent extends EventTarget {
   private status: AgentStatus = 'idle'
   private steps: AgentStep[] = []
   private abortController: AbortController | null = null
+  private memory: AgentMemory = { content: [], maxItems: 10 }
 
   constructor(config: AgentConfig) {
     super()
 
     this.config = {
       maxSteps: 20,
-      systemPrompt: DEFAULT_SYSTEM_PROMPT,
+      systemPrompt: SYSTEM_PROMPT,
       domConfig: {},
       temperature: 0.7,
       maxRetries: 3,
@@ -93,6 +76,7 @@ export class BeeAgent extends EventTarget {
 
     this.setStatus('running')
     this.steps = []
+    this.memory = { content: [], maxItems: 10 }
     this.abortController = new AbortController()
 
     const tools = createTools(this.domEngine)
@@ -146,6 +130,9 @@ export class BeeAgent extends EventTarget {
 
         const thought = result.content || 'No thought provided'
 
+        // 解析 reflection 结果
+        const reflection = this.parseReflection(thought)
+
         // Act: 执行工具调用
         if (result.toolCalls.length === 0) {
           throw new Error('No action provided by LLM')
@@ -168,7 +155,12 @@ export class BeeAgent extends EventTarget {
 
         const output = await tool.execute(toolInput)
 
-        // 记录步骤
+        // 更新记忆
+        if (reflection?.memory) {
+          this.updateMemory(reflection.memory)
+        }
+
+        // 记录步骤（包含 reflection）
         const step: AgentStep = {
           index: stepIndex,
           observation,
@@ -178,7 +170,10 @@ export class BeeAgent extends EventTarget {
             input: toolInput,
             output
           },
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          evaluation: reflection?.evaluation,
+          memory: reflection?.memory,
+          nextGoal: reflection?.nextGoal
         }
 
         this.steps.push(step)
@@ -242,26 +237,88 @@ export class BeeAgent extends EventTarget {
   }
 
   /**
-   * 构建提示词
+   * 构建提示词（包含 reflection 和 memory）
    */
   private buildPrompt(task: string, stepIndex: number, observation: string): string {
-    let prompt = `Task: ${task}\n\n`
-    prompt += `Step ${stepIndex + 1} of ${this.config.maxSteps}\n\n`
+    let prompt = `<user_request>\n${task}\n</user_request>\n\n`
 
-    // 添加历史步骤
+    prompt += `<agent_state>\n`
+    prompt += `Step ${stepIndex + 1} of ${this.config.maxSteps}\n`
+    prompt += `</agent_state>\n\n`
+
+    // 添加历史步骤（包含 reflection）
     if (this.steps.length > 0) {
-      prompt += 'Previous steps:\n'
-      for (const step of this.steps.slice(-3)) {
-        prompt += `- Step ${step.index + 1}: ${step.action.name}(${JSON.stringify(step.action.input)}) -> ${step.action.output}\n`
+      prompt += '<agent_history>\n'
+      for (const step of this.steps.slice(-5)) {
+        prompt += `<step_${step.index + 1}>\n`
+        if (step.evaluation) {
+          prompt += `Evaluation of Previous Step: ${step.evaluation}\n`
+        }
+        if (step.memory) {
+          prompt += `Memory: ${step.memory}\n`
+        }
+        if (step.nextGoal) {
+          prompt += `Next Goal: ${step.nextGoal}\n`
+        }
+        prompt += `Action Results: ${step.action.name}(${JSON.stringify(step.action.input)}) -> ${step.action.output}\n`
+        prompt += `</step_${step.index + 1}>\n\n`
       }
-      prompt += '\n'
+      prompt += '</agent_history>\n\n'
     }
 
-    prompt += 'Current page state:\n'
-    prompt += observation + '\n\n'
-    prompt += 'What should I do next?'
+    // 添加累积记忆
+    if (this.memory.content.length > 0) {
+      prompt += '<accumulated_memory>\n'
+      prompt += this.memory.content.join('\n')
+      prompt += '\n</accumulated_memory>\n\n'
+    }
+
+    prompt += '<browser_state>\n'
+    prompt += observation
+    prompt += '\n</browser_state>\n\n'
+
+    prompt += 'Respond with JSON format:\n'
+    prompt += '{\n'
+    prompt += '  "evaluation_previous_goal": "...",\n'
+    prompt += '  "memory": "...",\n'
+    prompt += '  "next_goal": "...",\n'
+    prompt += '  "action": { "action_name": { /* params */ } }\n'
+    prompt += '}'
 
     return prompt
+  }
+
+  /**
+   * 解析 reflection 结果
+   */
+  private parseReflection(content: string): ReflectionResult | null {
+    try {
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) return null
+
+      const parsed = JSON.parse(jsonMatch[0])
+      return {
+        evaluation: parsed.evaluation_previous_goal || '',
+        memory: parsed.memory || '',
+        nextGoal: parsed.next_goal || ''
+      }
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * 更新记忆
+   */
+  private updateMemory(memoryText: string): void {
+    if (!memoryText) return
+
+    this.memory.content.push(memoryText)
+
+    // 保持记忆条数限制
+    if (this.memory.content.length > this.memory.maxItems) {
+      this.memory.content.shift()
+    }
   }
 
   /**

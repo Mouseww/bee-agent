@@ -6,10 +6,12 @@
 export * from './types'
 export * from './parser'
 export * from './actions'
+export * from './highlight'
 
 import type { InteractiveElement, DOMEngineConfig, BrowserState } from './types'
 import { parseDOM, cleanupHighlights, elementsToText, getPageInfo } from './parser'
-import { clickElement, inputText, selectOption, scrollVertical, getElementByIndex } from './actions'
+import { clickElement, inputText, selectOption, scrollVertical, getElementByIndex, hoverElement, pressKey, waitForElement, wait } from './actions'
+import { highlightElements, clearHighlights as clearHighlightOverlays } from './highlight'
 
 /**
  * DOM 引擎主类
@@ -28,6 +30,13 @@ export class DOMEngine {
   updateTree(): string {
     cleanupHighlights()
     this.elements = parseDOM(this.config)
+
+    // 如果启用高亮遮罩，显示高亮
+    if (this.config.showHighlightMask) {
+      const elementsToHighlight = this.elements.map(el => ({ element: el.element, index: el.index }))
+      highlightElements(elementsToHighlight)
+    }
+
     return elementsToText(this.elements, this.config.includeAttributes)
   }
 
@@ -100,10 +109,44 @@ export class DOMEngine {
   }
 
   /**
+   * 悬停
+   */
+  async hover(index: number): Promise<string> {
+    const element = getElementByIndex(this.elements, index)
+    await hoverElement(element)
+    return `Hovered over element [${index}]`
+  }
+
+  /**
+   * 按键
+   */
+  async keyboard(index: number, key: string): Promise<string> {
+    const element = getElementByIndex(this.elements, index)
+    await pressKey(element, key)
+    return `Pressed key "${key}" on element [${index}]`
+  }
+
+  /**
+   * 等待元素出现
+   */
+  async waitFor(selector: string, timeout = 5000): Promise<string> {
+    await waitForElement(selector, timeout)
+    return `Element "${selector}" appeared`
+  }
+
+  /**
+   * 等待指定时间
+   */
+  async wait(seconds: number): Promise<string> {
+    return await wait(seconds)
+  }
+
+  /**
    * 清理
    */
   cleanup(): void {
     cleanupHighlights()
+    clearHighlightOverlays()
     this.elements = []
   }
 }

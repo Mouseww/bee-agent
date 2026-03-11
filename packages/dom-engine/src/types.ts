@@ -17,6 +17,12 @@ export interface InteractiveElement {
   selector: string
   /** DOM 元素引用 */
   element: Element
+  /** 层级深度 */
+  depth: number
+  /** 父元素索引 */
+  parentIndex?: number
+  /** 是否为新元素 */
+  isNew?: boolean
 }
 
 export interface PageInfo {
@@ -44,6 +50,12 @@ export interface DOMEngineConfig {
   includeAttributes?: boolean
   /** 黑名单选择器 */
   blacklist?: string[]
+  /** 是否显示高亮遮罩 */
+  showHighlightMask?: boolean
+  /** 是否扫描 shadow DOM */
+  scanShadowDOM?: boolean
+  /** 是否扫描 iframe */
+  scanIframes?: boolean
 }
 
 export interface BrowserState {

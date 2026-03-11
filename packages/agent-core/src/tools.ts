@@ -90,6 +90,103 @@ export function createTools(domEngine: DOMEngine): AgentTool[] {
       }
     },
     {
+      name: 'hover',
+      description: 'Hover over an element to reveal tooltips or menus',
+      parameters: {
+        type: 'object',
+        properties: {
+          index: {
+            type: 'number',
+            description: 'The index of the element to hover over'
+          }
+        },
+        required: ['index']
+      },
+      execute: async (input: { index: number }) => {
+        return await domEngine.hover(input.index)
+      }
+    },
+    {
+      name: 'keyboard',
+      description: 'Press a keyboard key (Enter, Escape, Tab, ArrowDown, etc.)',
+      parameters: {
+        type: 'object',
+        properties: {
+          index: {
+            type: 'number',
+            description: 'The index of the element to send key to'
+          },
+          key: {
+            type: 'string',
+            description: 'The key to press (e.g., "Enter", "Escape", "Tab", "ArrowDown")'
+          }
+        },
+        required: ['index', 'key']
+      },
+      execute: async (input: { index: number; key: string }) => {
+        return await domEngine.keyboard(input.index, input.key)
+      }
+    },
+    {
+      name: 'wait',
+      description: 'Wait for x seconds. Can be used to wait until the page or data is fully loaded.',
+      parameters: {
+        type: 'object',
+        properties: {
+          seconds: {
+            type: 'number',
+            description: 'Number of seconds to wait (1-10)',
+            minimum: 1,
+            maximum: 10
+          }
+        },
+        required: ['seconds']
+      },
+      execute: async (input: { seconds: number }) => {
+        return await domEngine.wait(input.seconds)
+      }
+    },
+    {
+      name: 'wait_for',
+      description: 'Wait for a specific element to appear on the page',
+      parameters: {
+        type: 'object',
+        properties: {
+          selector: {
+            type: 'string',
+            description: 'CSS selector of the element to wait for'
+          },
+          timeout: {
+            type: 'number',
+            description: 'Maximum time to wait in milliseconds (default: 5000)',
+            default: 5000
+          }
+        },
+        required: ['selector']
+      },
+      execute: async (input: { selector: string; timeout?: number }) => {
+        return await domEngine.waitFor(input.selector, input.timeout || 5000)
+      }
+    },
+    {
+      name: 'ask_user',
+      description: 'Ask the user a question and wait for their answer. Use this if you need more information or clarification.',
+      parameters: {
+        type: 'object',
+        properties: {
+          question: {
+            type: 'string',
+            description: 'The question to ask the user'
+          }
+        },
+        required: ['question']
+      },
+      execute: async (_input: { question: string }) => {
+        // This will be handled by the agent's onAskUser callback
+        throw new Error('ask_user tool requires onAskUser callback to be set in agent config')
+      }
+    },
+    {
       name: 'done',
       description: 'Mark the task as completed',
       parameters: {

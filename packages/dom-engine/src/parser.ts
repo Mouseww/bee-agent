@@ -27,6 +27,16 @@ function isInteractive(element: Element): boolean {
   // contenteditable
   if (element.getAttribute('contenteditable') === 'true') return true
 
+  // cursor:pointer 判断
+  if (element instanceof HTMLElement) {
+    const style = window.getComputedStyle(element)
+    if (style.cursor === 'pointer') return true
+  }
+
+  // tabindex >= 0 判断
+  const tabindex = element.getAttribute('tabindex')
+  if (tabindex !== null && parseInt(tabindex, 10) >= 0) return true
+
   return false
 }
 
@@ -97,13 +107,36 @@ function generateSelector(element: Element): string {
  * 提取元素文本
  */
 function extractText(element: Element): string {
+  // 优先使用 aria-label
+  const ariaLabel = element.getAttribute('aria-label')
+  if (ariaLabel) return ariaLabel.trim().slice(0, 100)
+
+  // 其次使用 title
+  const title = element.getAttribute('title')
+  if (title) return title.trim().slice(0, 100)
+
+  // 图片使用 alt
+  if (element instanceof HTMLImageElement) {
+    return element.alt || element.title || ''
+  }
+
+  // 链接使用 title 或 href
+  if (element instanceof HTMLAnchorElement) {
+    return element.title || element.textContent?.trim() || element.href || ''
+  }
+
   if (element instanceof HTMLInputElement) {
-    return element.value || element.placeholder || ''
+    return element.value || element.placeholder || element.title || ''
   }
 
   if (element instanceof HTMLSelectElement) {
     const selected = element.selectedOptions[0]
     return selected ? selected.textContent?.trim() || '' : ''
+  }
+
+  // 按钮使用 aria-label 或文本
+  if (element instanceof HTMLButtonElement) {
+    return element.getAttribute('aria-label') || element.textContent?.trim() || ''
   }
 
   const text = element.textContent?.trim() || ''
@@ -134,6 +167,38 @@ export function getPageInfo(): PageInfo {
 }
 
 /**
+ * 计算元素深度
+ */
+function getElementDepth(element: Element): number {
+  let depth = 0
+  let current: Element | null = element
+
+  while (current && current !== document.body) {
+    depth++
+    current = current.parentElement
+  }
+
+  return depth
+}
+
+/**
+ * 查找父元素索引
+ */
+function findParentIndex(element: Element, indexedElements: Map<Element, number>): number | undefined {
+  let current: Element | null = element.parentElement
+
+  while (current && current !== document.body) {
+    const parentIndex = indexedElements.get(current)
+    if (parentIndex !== undefined) {
+      return parentIndex
+    }
+    current = current.parentElement
+  }
+
+  return undefined
+}
+
+/**
  * 解析 DOM 树，提取可交互元素
  */
 export function parseDOM(config: DOMEngineConfig = {}): InteractiveElement[] {
@@ -141,6 +206,7 @@ export function parseDOM(config: DOMEngineConfig = {}): InteractiveElement[] {
 
   const elements: InteractiveElement[] = []
   const allElements = document.querySelectorAll('*')
+  const indexedElements = new Map<Element, number>()
 
   let index = 0
 
@@ -161,13 +227,20 @@ export function parseDOM(config: DOMEngineConfig = {}): InteractiveElement[] {
     const type = element.getAttribute('type') || undefined
     const text = extractText(element)
     const selector = generateSelector(element)
+    const depth = getElementDepth(element)
 
     const attributes: Record<string, string> = {}
     for (const attr of element.attributes) {
-      if (['id', 'class', 'name', 'placeholder', 'aria-label'].includes(attr.name)) {
+      if (['id', 'class', 'name', 'placeholder', 'aria-label', 'title', 'alt', 'href'].includes(attr.name)) {
         attributes[attr.name] = attr.value
       }
     }
+
+    // 记录元素索引映射
+    indexedElements.set(element, index)
+
+    // 查找父元素索引
+    const parentIndex = findParentIndex(element, indexedElements)
 
     elements.push({
       index,
@@ -176,7 +249,9 @@ export function parseDOM(config: DOMEngineConfig = {}): InteractiveElement[] {
       text,
       attributes,
       selector,
-      element
+      element,
+      depth,
+      parentIndex
     })
 
     // 添加高亮标记
@@ -197,15 +272,23 @@ export function cleanupHighlights(): void {
 }
 
 /**
- * 将元素列表转换为文本描述
+ * 将元素列表转换为文本描述（树形层级结构）
  */
 export function elementsToText(elements: InteractiveElement[], includeAttributes = false): string {
   if (elements.length === 0) return '<empty>'
 
   const lines: string[] = []
+  const previousElements = new Set<number>()
 
   for (const el of elements) {
-    let line = `[${el.index}] <${el.tagName}`
+    // 计算缩进（使用 \t 表示层级）
+    const indent = '\t'.repeat(Math.max(0, el.depth - 1))
+
+    // 标记新元素（相对于上一次扫描）
+    const isNew = el.isNew && !previousElements.has(el.index)
+    const prefix = isNew ? '*' : ''
+
+    let line = `${indent}${prefix}[${el.index}]<${el.tagName}`
 
     if (el.type) line += ` type="${el.type}"`
 
@@ -222,6 +305,7 @@ export function elementsToText(elements: InteractiveElement[], includeAttributes
     }
 
     lines.push(line)
+    previousElements.add(el.index)
   }
 
   return lines.join('\n')

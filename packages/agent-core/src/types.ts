@@ -44,6 +44,12 @@ export interface AgentStep {
   }
   /** 时间戳 */
   timestamp: number
+  /** 反思：对上一步的评估 */
+  evaluation?: string
+  /** 记忆：本步骤的重要信息 */
+  memory?: string
+  /** 下一步目标 */
+  nextGoal?: string
 }
 
 export interface ExecutionResult {
@@ -57,4 +63,20 @@ export interface AgentTool {
   description: string
   parameters: Record<string, any>
   execute: (input: any) => Promise<string>
+}
+
+export interface AgentMemory {
+  /** 累积的记忆内容 */
+  content: string[]
+  /** 最大记忆条数 */
+  maxItems: number
+}
+
+export interface ReflectionResult {
+  /** 对上一步的评估 */
+  evaluation: string
+  /** 本步骤的记忆 */
+  memory: string
+  /** 下一步目标 */
+  nextGoal: string
 }
