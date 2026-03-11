@@ -1,10 +1,15 @@
 /**
  * DOM 高亮遮罩层 - 半透明方块标注索引
+ * @module @bee-agent/dom-engine
+ * @description 在页面上创建彩色遮罩层，标注可交互元素的索引号
  */
 
 const HIGHLIGHT_CLASS = 'bee-agent-highlight'
 const HIGHLIGHT_CONTAINER_ID = 'bee-agent-highlights-container'
 
+/**
+ * 高亮样式配置
+ */
 interface HighlightStyle {
   backgroundColor: string
   borderColor: string
@@ -15,18 +20,19 @@ interface HighlightStyle {
   zIndex: number
 }
 
-// 彩色方案 - 循环使用不同颜色
+/** 彩色方案 - 循环使用不同颜色以区分元素 */
 const COLOR_SCHEMES = [
-  { bg: 'rgba(59, 130, 246, 0.25)', border: 'rgba(37, 99, 235, 0.9)', text: '#fff' }, // 蓝色
-  { bg: 'rgba(16, 185, 129, 0.25)', border: 'rgba(5, 150, 105, 0.9)', text: '#fff' }, // 绿色
-  { bg: 'rgba(245, 158, 11, 0.25)', border: 'rgba(217, 119, 6, 0.9)', text: '#fff' }, // 橙色
-  { bg: 'rgba(239, 68, 68, 0.25)', border: 'rgba(220, 38, 38, 0.9)', text: '#fff' }, // 红色
-  { bg: 'rgba(168, 85, 247, 0.25)', border: 'rgba(147, 51, 234, 0.9)', text: '#fff' }, // 紫色
-  { bg: 'rgba(236, 72, 153, 0.25)', border: 'rgba(219, 39, 119, 0.9)', text: '#fff' }, // 粉色
-  { bg: 'rgba(20, 184, 166, 0.25)', border: 'rgba(13, 148, 136, 0.9)', text: '#fff' }, // 青色
-  { bg: 'rgba(251, 191, 36, 0.25)', border: 'rgba(245, 158, 11, 0.9)', text: '#000' }  // 黄色
-]
+  { bg: 'rgba(59, 130, 246, 0.25)', border: 'rgba(37, 99, 235, 0.9)', text: '#fff' },
+  { bg: 'rgba(16, 185, 129, 0.25)', border: 'rgba(5, 150, 105, 0.9)', text: '#fff' },
+  { bg: 'rgba(245, 158, 11, 0.25)', border: 'rgba(217, 119, 6, 0.9)', text: '#fff' },
+  { bg: 'rgba(239, 68, 68, 0.25)', border: 'rgba(220, 38, 38, 0.9)', text: '#fff' },
+  { bg: 'rgba(168, 85, 247, 0.25)', border: 'rgba(147, 51, 234, 0.9)', text: '#fff' },
+  { bg: 'rgba(236, 72, 153, 0.25)', border: 'rgba(219, 39, 119, 0.9)', text: '#fff' },
+  { bg: 'rgba(20, 184, 166, 0.25)', border: 'rgba(13, 148, 136, 0.9)', text: '#fff' },
+  { bg: 'rgba(251, 191, 36, 0.25)', border: 'rgba(245, 158, 11, 0.9)', text: '#000' }
+] as const
 
+/** 默认高亮样式 */
 const DEFAULT_STYLE: HighlightStyle = {
   backgroundColor: 'rgba(59, 130, 246, 0.25)',
   borderColor: 'rgba(37, 99, 235, 0.9)',
@@ -38,7 +44,8 @@ const DEFAULT_STYLE: HighlightStyle = {
 }
 
 /**
- * 创建高亮遮罩容器
+ * 确保高亮容器存在
+ * @returns 高亮容器元素
  */
 function ensureHighlightContainer(): HTMLElement {
   let container = document.getElementById(HIGHLIGHT_CONTAINER_ID)
@@ -54,10 +61,12 @@ function ensureHighlightContainer(): HTMLElement {
       height: 100%;
       pointer-events: none;
       z-index: ${DEFAULT_STYLE.zIndex};
+      overflow: visible;
     `
 
     // 添加 CSS 动画
     const style = document.createElement('style')
+    style.id = 'bee-agent-highlight-styles'
     style.textContent = `
       @keyframes bee-agent-fade-in {
         from {
@@ -83,7 +92,11 @@ function ensureHighlightContainer(): HTMLElement {
         filter: brightness(1.1);
       }
     `
-    document.head.appendChild(style)
+
+    // 避免重复添加样式
+    if (!document.getElementById('bee-agent-highlight-styles')) {
+      document.head.appendChild(style)
+    }
     document.body.appendChild(container)
   }
 
@@ -92,12 +105,15 @@ function ensureHighlightContainer(): HTMLElement {
 
 /**
  * 为元素添加高亮遮罩
+ * @param element - 目标 DOM 元素
+ * @param index - 元素索引
+ * @param style - 可选的自定义样式
  */
 export function highlightElement(element: Element, index: number, style: Partial<HighlightStyle> = {}): void {
   const container = ensureHighlightContainer()
   const rect = element.getBoundingClientRect()
 
-  // 创建遮罩层
+  // 创建遮罩层（使用 fixed 定位，不受滚动影响）
   const overlay = document.createElement('div')
   overlay.className = HIGHLIGHT_CLASS
   overlay.dataset.index = String(index)
@@ -113,9 +129,9 @@ export function highlightElement(element: Element, index: number, style: Partial
   }
 
   overlay.style.cssText = `
-    position: absolute;
-    top: ${rect.top + window.scrollY}px;
-    left: ${rect.left + window.scrollX}px;
+    position: fixed;
+    top: ${rect.top}px;
+    left: ${rect.left}px;
     width: ${rect.width}px;
     height: ${rect.height}px;
     background-color: ${finalStyle.backgroundColor};
@@ -151,6 +167,9 @@ export function highlightElement(element: Element, index: number, style: Partial
 
 /**
  * 批量高亮元素
+ * @description 先清除现有高亮，再批量添加新的高亮
+ * @param elements - 要高亮的元素列表
+ * @param style - 可选的自定义样式
  */
 export function highlightElements(elements: Array<{ element: Element; index: number }>, style?: Partial<HighlightStyle>): void {
   clearHighlights()
@@ -161,7 +180,7 @@ export function highlightElements(elements: Array<{ element: Element; index: num
 }
 
 /**
- * 清除所有高亮
+ * 清除所有高亮遮罩
  */
 export function clearHighlights(): void {
   const container = document.getElementById(HIGHLIGHT_CONTAINER_ID)
@@ -171,17 +190,23 @@ export function clearHighlights(): void {
 }
 
 /**
- * 移除高亮容器
+ * 移除高亮容器及相关样式
  */
 export function removeHighlightContainer(): void {
   const container = document.getElementById(HIGHLIGHT_CONTAINER_ID)
   if (container) {
     container.remove()
   }
+  const style = document.getElementById('bee-agent-highlight-styles')
+  if (style) {
+    style.remove()
+  }
 }
 
 /**
  * 高亮特定索引的元素
+ * @param index - 元素索引
+ * @param style - 可选的自定义样式
  */
 export function highlightByIndex(index: number, style?: Partial<HighlightStyle>): void {
   const element = document.querySelector(`[data-bee-agent-index="${index}"]`)
@@ -191,38 +216,52 @@ export function highlightByIndex(index: number, style?: Partial<HighlightStyle>)
 }
 
 /**
- * 更新高亮位置（滚动时调用）
+ * 更新所有高亮遮罩的位置
+ * @description 在页面滚动或窗口大小变化时调用，保持遮罩与元素对齐
  */
 export function updateHighlightPositions(): void {
   const container = document.getElementById(HIGHLIGHT_CONTAINER_ID)
   if (!container) return
 
-  const highlights = container.querySelectorAll(`.${HIGHLIGHT_CLASS}`)
+  const highlights = container.querySelectorAll<HTMLElement>(`.${HIGHLIGHT_CLASS}`)
 
   for (const highlight of highlights) {
-    const index = (highlight as HTMLElement).dataset.index
+    const index = highlight.dataset.index
     if (!index) continue
 
     const element = document.querySelector(`[data-bee-agent-index="${index}"]`)
-    if (!element) continue
+    if (!element) {
+      // 元素不存在了，移除高亮
+      highlight.remove()
+      continue
+    }
 
     const rect = element.getBoundingClientRect()
-    const highlightEl = highlight as HTMLElement
 
-    highlightEl.style.top = `${rect.top + window.scrollY}px`
-    highlightEl.style.left = `${rect.left + window.scrollX}px`
-    highlightEl.style.width = `${rect.width}px`
-    highlightEl.style.height = `${rect.height}px`
+    highlight.style.top = `${rect.top}px`
+    highlight.style.left = `${rect.left}px`
+    highlight.style.width = `${rect.width}px`
+    highlight.style.height = `${rect.height}px`
   }
 }
 
-// 监听滚动事件，更新高亮位置
-let scrollTimeout: number | null = null
+// 监听滚动事件，更新高亮位置（节流处理）
+let scrollTimeout: ReturnType<typeof setTimeout> | null = null
 window.addEventListener('scroll', () => {
   if (scrollTimeout) {
     clearTimeout(scrollTimeout)
   }
-  scrollTimeout = window.setTimeout(() => {
+  scrollTimeout = setTimeout(() => {
     updateHighlightPositions()
-  }, 100) as unknown as number
+  }, 100)
+}, { passive: true })
+
+// 监听窗口大小变化
+window.addEventListener('resize', () => {
+  if (scrollTimeout) {
+    clearTimeout(scrollTimeout)
+  }
+  scrollTimeout = setTimeout(() => {
+    updateHighlightPositions()
+  }, 100)
 }, { passive: true })

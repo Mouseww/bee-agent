@@ -5,112 +5,90 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BeeAgent 设置</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      width: 320px;
+      width: 360px;
       padding: 20px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
     }
-    h2 {
-      font-size: 18px;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .form-group {
-      margin-bottom: 16px;
-    }
-    label {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 13px;
-      font-weight: 500;
-    }
+    h2 { font-size: 18px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; margin-bottom: 5px; font-size: 13px; font-weight: 500; }
+    .label-hint { font-size: 11px; opacity: 0.8; font-weight: 400; }
     input, select {
-      width: 100%;
-      padding: 10px;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      background: rgba(255, 255, 255, 0.9);
-      color: #333;
+      width: 100%; padding: 9px 10px; border: none; border-radius: 6px;
+      font-size: 13px; background: rgba(255,255,255,0.9); color: #333;
     }
-    input:focus, select:focus {
-      outline: 2px solid white;
+    input:focus, select:focus { outline: 2px solid white; }
+    input::placeholder { color: #999; font-size: 12px; }
+    .row { display: flex; gap: 8px; align-items: flex-end; }
+    .row .form-group { flex: 1; margin-bottom: 0; }
+    .row button { flex-shrink: 0; margin-bottom: 0; height: 36px; }
+    .btn-fetch {
+      padding: 0 12px; border: none; border-radius: 6px; font-size: 12px;
+      font-weight: 500; cursor: pointer; background: rgba(255,255,255,0.25);
+      color: white; white-space: nowrap; transition: all 0.2s;
     }
-    .button-group {
-      display: flex;
-      gap: 10px;
-      margin-top: 20px;
+    .btn-fetch:hover { background: rgba(255,255,255,0.35); }
+    .btn-fetch:disabled { opacity: 0.5; cursor: not-allowed; }
+    .divider { border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 14px 0; }
+    .button-group { display: flex; gap: 10px; margin-top: 18px; }
+    button.btn-main {
+      flex: 1; padding: 10px; border: none; border-radius: 6px;
+      font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s;
     }
-    button {
-      flex: 1;
-      padding: 10px;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .btn-primary {
-      background: white;
-      color: #667eea;
-    }
-    .btn-primary:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    }
-    .btn-secondary {
-      background: rgba(255, 255, 255, 0.2);
-      color: white;
-    }
-    .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.3);
-    }
+    .btn-primary { background: white; color: #667eea; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .btn-secondary { background: rgba(255,255,255,0.2); color: white; }
+    .btn-secondary:hover { background: rgba(255,255,255,0.3); }
     .status {
-      margin-top: 12px;
-      padding: 8px;
-      border-radius: 6px;
-      font-size: 13px;
-      text-align: center;
-      background: rgba(255, 255, 255, 0.2);
+      margin-top: 12px; padding: 8px; border-radius: 6px;
+      font-size: 13px; text-align: center; background: rgba(255,255,255,0.2); display: none;
     }
-    .status.success {
-      background: rgba(76, 175, 80, 0.3);
-    }
-    .status.error {
-      background: rgba(244, 67, 54, 0.3);
-    }
+    .status.success { background: rgba(76,175,80,0.3); }
+    .status.error { background: rgba(244,67,54,0.3); }
+    .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.7; margin-bottom: 8px; }
   </style>
 </head>
 <body>
   <h2>🐝 BeeAgent 设置</h2>
 
+  <div class="section-title">供应商配置</div>
+
   <div class="form-group">
-    <label for="apiKey">API Key:</label>
-    <input type="password" id="apiKey" placeholder="输入你的 API Key">
+    <label for="baseURL">Base URL <span class="label-hint">(OpenAI 兼容)</span></label>
+    <input type="text" id="baseURL" placeholder="https://api.openai.com/v1">
   </div>
 
   <div class="form-group">
-    <label for="model">模型:</label>
-    <select id="model">
-      <option value="gpt-4">GPT-4</option>
-      <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-      <option value="claude-3-opus">Claude 3 Opus</option>
-      <option value="claude-3-sonnet">Claude 3 Sonnet</option>
-    </select>
+    <label for="apiKey">API Key</label>
+    <input type="password" id="apiKey" placeholder="sk-...">
+  </div>
+
+  <hr class="divider">
+  <div class="section-title">模型选择</div>
+
+  <div class="row" style="margin-bottom: 14px;">
+    <div class="form-group">
+      <label for="model">从 API 获取</label>
+      <select id="model">
+        <option value="">-- 点击右侧获取 --</option>
+      </select>
+    </div>
+    <button class="btn-fetch" id="fetchModelsBtn">获取模型</button>
   </div>
 
   <div class="form-group">
-    <label for="language">语言:</label>
+    <label for="customModel">或手动输入模型名 <span class="label-hint">(优先使用)</span></label>
+    <input type="text" id="customModel" placeholder="例如 qwen-plus, deepseek-chat">
+  </div>
+
+  <hr class="divider">
+
+  <div class="form-group">
+    <label for="language">界面语言</label>
     <select id="language">
       <option value="zh-CN">中文</option>
       <option value="en-US">English</option>
@@ -118,11 +96,11 @@
   </div>
 
   <div class="button-group">
-    <button class="btn-primary" id="saveBtn">保存</button>
-    <button class="btn-secondary" id="activateBtn">激活</button>
+    <button class="btn-main btn-primary" id="saveBtn">💾 保存</button>
+    <button class="btn-main btn-secondary" id="activateBtn">🚀 激活</button>
   </div>
 
-  <div id="status" class="status" style="display: none;"></div>
+  <div id="status" class="status"></div>
 
   <script src="popup.js"></script>
 </body>

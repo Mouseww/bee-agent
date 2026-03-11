@@ -20,8 +20,15 @@ interface BeeAgentUIProps {
 
 interface Settings {
   apiKey: string
+  baseURL: string
   model: string
+  customModel: string
   language: string
+}
+
+interface ModelInfo {
+  id: string
+  owned_by?: string
 }
 
 export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
@@ -36,8 +43,10 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
   const [showSettings, setShowSettings] = useState(false)
   const [settings, setSettings] = useState<Settings>(() => {
     const saved = localStorage.getItem('bee-agent-settings')
-    return saved ? JSON.parse(saved) : { apiKey: '', model: 'gpt-4', language: 'zh-CN' }
+    return saved ? JSON.parse(saved) : { apiKey: '', baseURL: '', model: '', customModel: '', language: 'zh-CN' }
   })
+  const [availableModels, setAvailableModels] = useState<ModelInfo[]>([])
+  const [isFetchingModels, setIsFetchingModels] = useState(false)
   const [position, setPosition] = useState({ x: window.innerWidth - 420, y: 20 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
@@ -277,6 +286,15 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
             <div className="bee-agent-settings">
               <h4>设置</h4>
               <div className="bee-agent-settings-item">
+                <label>Base URL <small style={{opacity:0.6}}>(OpenAI 兼容)</small>:</label>
+                <input
+                  type="text"
+                  value={settings.baseURL}
+                  onChange={e => setSettings({ ...settings, baseURL: e.target.value })}
+                  placeholder="https://api.openai.com/v1"
+                />
+              </div>
+              <div className="bee-agent-settings-item">
                 <label>API Key:</label>
                 <input
                   type="password"
@@ -286,16 +304,53 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
                 />
               </div>
               <div className="bee-agent-settings-item">
-                <label>模型:</label>
-                <select
-                  value={settings.model}
-                  onChange={e => setSettings({ ...settings, model: e.target.value })}
-                >
-                  <option value="gpt-4">GPT-4</option>
-                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                  <option value="claude-3-opus">Claude 3 Opus</option>
-                  <option value="claude-3-sonnet">Claude 3 Sonnet</option>
-                </select>
+                <label>模型 <small style={{opacity:0.6}}>(从API获取)</small>:</label>
+                <div style={{display:'flex',gap:'6px'}}>
+                  <select
+                    value={settings.model}
+                    onChange={e => setSettings({ ...settings, model: e.target.value })}
+                    style={{flex:1}}
+                  >
+                    <option value="">-- 点击获取 --</option>
+                    {availableModels.map(m => (
+                      <option key={m.id} value={m.id}>{m.id}{m.owned_by ? ` (${m.owned_by})` : ''}</option>
+                    ))}
+                  </select>
+                  <button
+                    className="bee-agent-button bee-agent-button-secondary"
+                    style={{flexShrink:0,padding:'4px 8px',fontSize:'12px'}}
+                    disabled={isFetchingModels || !settings.apiKey}
+                    onClick={async () => {
+                      setIsFetchingModels(true)
+                      try {
+                        let url = (settings.baseURL || 'https://api.openai.com/v1').replace(/\/+$/, '')
+                        if (!url.endsWith('/v1')) url += '/v1'
+                        const res = await fetch(`${url}/models`, {
+                          headers: { 'Authorization': `Bearer ${settings.apiKey}` }
+                        })
+                        const data = await res.json()
+                        const models = (data.data || []).sort((a: ModelInfo, b: ModelInfo) => a.id.localeCompare(b.id))
+                        setAvailableModels(models)
+                        addMessage('system', `获取到 ${models.length} 个可用模型`)
+                      } catch (err) {
+                        addMessage('system', `获取模型失败: ${err}`)
+                      } finally {
+                        setIsFetchingModels(false)
+                      }
+                    }}
+                  >
+                    {isFetchingModels ? '...' : '获取'}
+                  </button>
+                </div>
+              </div>
+              <div className="bee-agent-settings-item">
+                <label>手动输入模型名 <small style={{opacity:0.6}}>(优先使用)</small>:</label>
+                <input
+                  type="text"
+                  value={settings.customModel}
+                  onChange={e => setSettings({ ...settings, customModel: e.target.value })}
+                  placeholder="例如 qwen-plus, deepseek-chat"
+                />
               </div>
               <div className="bee-agent-settings-item">
                 <label>语言:</label>

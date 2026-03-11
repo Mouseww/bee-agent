@@ -15,7 +15,7 @@ export default defineConfig({
         format: 'es'
       }
     },
-    minify: false,
+    minify: true,
     sourcemap: true
   },
   publicDir: 'public'

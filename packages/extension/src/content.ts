@@ -39,18 +39,24 @@ async function activateBeeAgent() {
 
   try {
     // 从 storage 读取配置
-    const config = await chrome.storage.sync.get(['apiKey', 'model', 'language'])
+    const config = await chrome.storage.sync.get(['apiKey', 'baseURL', 'model', 'customModel', 'language'])
 
     if (!config.apiKey) {
       alert('请先在扩展设置中配置 API Key')
       return
     }
 
+    const model = config.customModel || config.model || 'gpt-4'
+    let baseURL = config.baseURL || 'https://api.openai.com/v1'
+    // 确保 baseURL 以 /v1 结尾
+    baseURL = baseURL.replace(/\/+$/, '')
+    if (!baseURL.endsWith('/v1')) baseURL += '/v1'
+
     // 创建 Agent
     agent = new BeeAgent({
       apiKey: config.apiKey,
-      model: config.model || 'gpt-4',
-      baseURL: 'https://api.openai.com/v1'
+      model,
+      baseURL
     })
 
     // 挂载 UI
