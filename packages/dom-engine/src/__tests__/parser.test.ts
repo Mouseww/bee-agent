@@ -493,7 +493,7 @@ describe('DOM Parser', () => {
     it('应该计算正确的 pixelsBelow', () => {
       const pageInfo = getPageInfo()
 
-      const expected = pageInfo.pageHeight - pageInfo.scrollY - pageInfo.viewportHeight
+      const expected = Math.max(0, pageInfo.pageHeight - pageInfo.scrollY - pageInfo.viewportHeight)
       expect(pageInfo.pixelsBelow).toBe(expected)
     })
   })

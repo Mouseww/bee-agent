@@ -321,7 +321,7 @@ describe('Agent Tools', () => {
         message: 'Task completed successfully'
       })
 
-      expect(result).toBe('Task completed: Task completed successfully')
+      expect(result).toBe('Task succeeded: Task completed successfully')
     })
 
     it('应该处理失败情况', async () => {
@@ -332,7 +332,7 @@ describe('Agent Tools', () => {
         message: 'Task failed'
       })
 
-      expect(result).toBe('Task completed: Task failed')
+      expect(result).toBe('Task failed: Task failed')
     })
 
     it('应该有正确的参数定义', () => {

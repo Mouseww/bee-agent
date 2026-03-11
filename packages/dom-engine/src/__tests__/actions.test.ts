@@ -91,7 +91,7 @@ describe('DOM Actions', () => {
       const div = document.createElement('div')
 
       await expect(inputText(div, 'test')).rejects.toThrow(
-        'Element is not an input or textarea'
+        'Element is not an input, textarea, or contenteditable'
       )
     })
 

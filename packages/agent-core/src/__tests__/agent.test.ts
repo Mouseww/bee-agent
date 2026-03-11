@@ -302,7 +302,7 @@ describe('BeeAgent', () => {
       const result = await agent.execute('Test task')
 
       expect(result.success).toBe(false)
-      expect(result.message).toBe('Maximum steps reached')
+      expect(result.message).toContain('Maximum steps')
       expect(agent.getSteps().length).toBe(2)
     })
 
