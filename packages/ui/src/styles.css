@@ -206,6 +206,39 @@
 }
 
 /* ════════════════════════════════════════
+   Tab 切换
+   ════════════════════════════════════════ */
+.bee-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--bee-divider);
+  flex-shrink: 0;
+  padding: 0 8px;
+}
+
+.bee-tab {
+  flex: 1;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--bee-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+  text-align: center;
+}
+
+.bee-tab:hover {
+  color: var(--bee-text);
+}
+
+.bee-tab-active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+}
+
+/* ════════════════════════════════════════
    消息区
    ════════════════════════════════════════ */
 .bee-messages {
