@@ -76,9 +76,9 @@ export interface DOMEngineConfig {
   blacklist?: string[]
   /** 是否显示高亮遮罩层标注索引，默认 false */
   showHighlightMask?: boolean
-  /** 是否扫描 Shadow DOM 内部元素 */
+  /** 是否扫描 Shadow DOM 内部元素（暂未实现，预留接口） */
   scanShadowDOM?: boolean
-  /** 是否扫描 iframe 内部元素 */
+  /** 是否扫描 iframe 内部元素（暂未实现，预留接口） */
   scanIframes?: boolean
 }
 

@@ -345,8 +345,8 @@ export function elementsToText(elements: InteractiveElement[], includeAttributes
     // 计算缩进（使用 \t 表示层级）
     const indent = '\t'.repeat(Math.max(0, el.depth - 1))
 
-    // 标记新元素（相对于上一次扫描）
-    const isNew = el.isNew && !previousElements.has(el.index)
+    // 标记新元素（相对于上一次扫描，isNew 由外部设置）
+    const isNew = el.isNew === true && !previousElements.has(el.index)
     const prefix = isNew ? '*' : ''
 
     let line = `${indent}${prefix}[${el.index}]<${el.tagName}`

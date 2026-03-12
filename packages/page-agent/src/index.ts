@@ -78,7 +78,13 @@ document.addEventListener('keydown', (e) => {
       // 尝试从 localStorage 读取配置
       const savedConfig = localStorage.getItem('bee-agent-config')
       if (savedConfig) {
-        initBeeAgent(JSON.parse(savedConfig))
+        try {
+          initBeeAgent(JSON.parse(savedConfig))
+        } catch (e) {
+          console.error('BeeAgent: 配置解析失败，已清除无效配置', e)
+          localStorage.removeItem('bee-agent-config')
+          initBeeAgent({ apiKey: '' })
+        }
       } else {
         initBeeAgent({ apiKey: '' })
       }
@@ -93,9 +99,14 @@ window.initBeeAgent = initBeeAgent
 // 自动初始化（如果有保存的配置）
 const savedConfig = localStorage.getItem('bee-agent-config')
 if (savedConfig) {
-  const config = JSON.parse(savedConfig)
-  if (config.autoActivate) {
-    initBeeAgent(config)
+  try {
+    const config = JSON.parse(savedConfig)
+    if (config.autoActivate) {
+      initBeeAgent(config)
+    }
+  } catch (e) {
+    console.error('BeeAgent: 自动初始化配置解析失败', e)
+    localStorage.removeItem('bee-agent-config')
   }
 }
 

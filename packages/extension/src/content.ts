@@ -1,5 +1,7 @@
 /**
  * Content Script - 注入 BeeAgent 到页面
+ * @module @bee-agent/extension
+ * @description 在目标网页中创建 BeeAgent 实例并挂载 UI，支持快捷键和消息驱动激活
  */
 
 import { BeeAgent } from '@bee-agent/agent-core'
@@ -7,6 +9,21 @@ import { mountBeeAgentUI } from '@bee-agent/ui'
 
 let agent: BeeAgent | null = null
 let unmountUI: (() => void) | null = null
+
+/**
+ * 清理 BeeAgent 实例和 UI
+ * @description 释放 Agent 资源并卸载 UI 组件
+ */
+function cleanup(): void {
+  if (agent) {
+    agent.dispose()
+    agent = null
+  }
+  if (unmountUI) {
+    unmountUI()
+    unmountUI = null
+  }
+}
 
 // 监听来自 popup 的消息
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -22,9 +39,7 @@ document.addEventListener('keydown', (e) => {
   if (e.ctrlKey && e.shiftKey && e.key === 'B') {
     e.preventDefault()
     if (agent && unmountUI) {
-      unmountUI()
-      agent = null
-      unmountUI = null
+      cleanup()
     } else {
       activateBeeAgent()
     }
@@ -75,4 +90,9 @@ chrome.storage.sync.get(['autoActivate'], (result) => {
   if (result.autoActivate) {
     activateBeeAgent()
   }
+})
+
+// 页面卸载时清理资源，防止内存泄漏
+window.addEventListener('beforeunload', () => {
+  cleanup()
 })

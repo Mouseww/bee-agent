@@ -55,14 +55,12 @@ export class BeeAgent extends EventTarget {
     if (!config.model) throw new Error('AgentConfig.model is required')
 
     this.config = {
-      maxSteps: 20,
       systemPrompt: SYSTEM_PROMPT,
       domConfig: {},
-      temperature: 0.7,
       maxRetries: 3,
       timeout: 60000,
       ...config,
-      // 边界值保护
+      // 边界值保护：maxSteps 限制在 [1, 100]，temperature 限制在 [0, 2]
       maxSteps: Math.min(Math.max(config.maxSteps ?? 20, 1), 100),
       temperature: Math.min(Math.max(config.temperature ?? 0.7, 0), 2),
     }

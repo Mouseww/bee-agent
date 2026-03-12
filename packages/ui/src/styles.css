@@ -266,6 +266,21 @@
   background: #3a3a3a;
 }
 
+.bee-agent-step-error {
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: #fff3cd;
+  border-radius: 4px;
+  color: #856404;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.bee-agent-container[data-theme="dark"] .bee-agent-step-error {
+  background: #4a4a2a;
+  color: #f0e68c;
+}
+
 /* 设置面板样式 */
 .bee-agent-settings {
   padding: 20px;

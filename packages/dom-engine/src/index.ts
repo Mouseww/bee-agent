@@ -29,7 +29,7 @@ export * from './highlight'
 import type { InteractiveElement, DOMEngineConfig, BrowserState } from './types'
 import { parseDOM, cleanupHighlights, elementsToText, getPageInfo } from './parser'
 import { clickElement, inputText, selectOption, scrollVertical, getElementByIndex, hoverElement, pressKey, waitForElement, wait } from './actions'
-import { highlightElements, clearHighlights as clearHighlightOverlays, removeHighlightContainer } from './highlight'
+import { highlightElements, clearHighlights as clearHighlightOverlays, removeHighlightContainer, initHighlightListeners, destroyHighlightListeners } from './highlight'
 
 /**
  * DOM 引擎主类
@@ -41,6 +41,8 @@ export class DOMEngine {
 
   constructor(config: DOMEngineConfig = {}) {
     this.config = config
+    // 初始化高亮事件监听
+    initHighlightListeners()
   }
 
   /**
@@ -203,6 +205,7 @@ export class DOMEngine {
     cleanupHighlights()
     clearHighlightOverlays()
     removeHighlightContainer()
+    destroyHighlightListeners()
     this.elements = []
   }
 }

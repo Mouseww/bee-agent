@@ -245,23 +245,51 @@ export function updateHighlightPositions(): void {
   }
 }
 
-// 监听滚动事件，更新高亮位置（节流处理）
+/**
+ * 高亮位置更新的事件监听管理器
+ * @description 避免在模块加载时直接注册全局事件监听器（兼容 SSR/测试环境），
+ *              提供显式的 init/destroy 生命周期管理
+ */
 let scrollTimeout: ReturnType<typeof setTimeout> | null = null
-window.addEventListener('scroll', () => {
-  if (scrollTimeout) {
-    clearTimeout(scrollTimeout)
-  }
-  scrollTimeout = setTimeout(() => {
-    updateHighlightPositions()
-  }, 100)
-}, { passive: true })
+let isListenerAttached = false
 
-// 监听窗口大小变化
-window.addEventListener('resize', () => {
+/** 节流处理的高亮位置更新回调 */
+function throttledUpdatePositions(): void {
   if (scrollTimeout) {
     clearTimeout(scrollTimeout)
   }
   scrollTimeout = setTimeout(() => {
     updateHighlightPositions()
   }, 100)
-}, { passive: true })
+}
+
+/**
+ * 初始化高亮位置的事件监听
+ * @description 注册 scroll 和 resize 事件监听器，多次调用是安全的（幂等）
+ */
+export function initHighlightListeners(): void {
+  if (isListenerAttached) return
+  if (typeof window === 'undefined') return
+
+  window.addEventListener('scroll', throttledUpdatePositions, { passive: true })
+  window.addEventListener('resize', throttledUpdatePositions, { passive: true })
+  isListenerAttached = true
+}
+
+/**
+ * 销毁高亮位置的事件监听
+ * @description 移除 scroll 和 resize 事件监听器，释放资源
+ */
+export function destroyHighlightListeners(): void {
+  if (!isListenerAttached) return
+  if (typeof window === 'undefined') return
+
+  window.removeEventListener('scroll', throttledUpdatePositions)
+  window.removeEventListener('resize', throttledUpdatePositions)
+
+  if (scrollTimeout) {
+    clearTimeout(scrollTimeout)
+    scrollTimeout = null
+  }
+  isListenerAttached = false
+}
