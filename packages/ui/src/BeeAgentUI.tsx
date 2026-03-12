@@ -1,7 +1,7 @@
 /**
- * BeeAgent UI 组件
+ * BeeAgent UI 组件 - 全面重构版
  * @module @bee-agent/ui
- * @description 提供 Agent 的浮动交互界面，支持任务输入、步骤展示、设置管理
+ * @description 悬浮图标 + 侧边栏毛玻璃设计，支持拖拽、主题切换、设置管理
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
@@ -44,9 +44,6 @@ const DEFAULT_SETTINGS: Settings = {
 
 /**
  * 安全加载 localStorage 中的 JSON 数据
- * @param key - 存储键名
- * @param fallback - 解析失败时的默认值
- * @returns 解析后的对象或默认值
  */
 function safeLoadJSON<T>(key: string, fallback: T): T {
   try {
@@ -60,8 +57,6 @@ function safeLoadJSON<T>(key: string, fallback: T): T {
 
 /**
  * 安全的文本转义（防 XSS）
- * @param text - 原始文本
- * @returns 转义后的安全文本
  */
 function escapeHTML(text: string): string {
   const div = document.createElement('div')
@@ -71,8 +66,6 @@ function escapeHTML(text: string): string {
 
 /**
  * 简单的 Markdown 渲染（安全版本，先转义再替换）
- * @param text - 原始文本
- * @returns 安全的 HTML 字符串
  */
 function renderMarkdown(text: string): string {
   const escaped = escapeHTML(text)
@@ -85,8 +78,6 @@ function renderMarkdown(text: string): string {
 
 /**
  * 格式化时间戳为本地时间字符串
- * @param timestamp - Unix 毫秒时间戳
- * @returns 格式化的时间字符串
  */
 function formatTime(timestamp: number): string {
   try {
@@ -97,13 +88,16 @@ function formatTime(timestamp: number): string {
 }
 
 export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
+  // ── 状态 ──
   const [status, setStatus] = useState<AgentStatus>('idle')
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [steps, setSteps] = useState<AgentStep[]>([])
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set())
+  const [isOpen, setIsOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    return localStorage.getItem('bee-agent-theme') === 'dark'
+    const saved = localStorage.getItem('bee-agent-theme')
+    return saved ? saved === 'dark' : true // 默认暗色
   })
   const [showSettings, setShowSettings] = useState(false)
   const [settings, setSettings] = useState<Settings>(() =>
@@ -111,13 +105,17 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
   )
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([])
   const [isFetchingModels, setIsFetchingModels] = useState(false)
-  const [position, setPosition] = useState({ x: window.innerWidth - 420, y: 20 })
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
 
-  /** 添加消息（使用 useCallback 避免闭包问题） */
+  // ── 悬浮图标拖拽状态 ──
+  const [fabPos, setFabPos] = useState({ x: window.innerWidth - 72, y: window.innerHeight - 72 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const [wasDragged, setWasDragged] = useState(false)
+
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const sidebarRef = useRef<HTMLDivElement>(null)
+
+  // ── 添加消息 ──
   const addMessage = useCallback((type: Message['type'], content: string) => {
     setMessages(prev => [
       ...prev,
@@ -130,7 +128,7 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
     ])
   }, [])
 
-  // 监听 agent 事件
+  // ── 监听 agent 事件 ──
   useEffect(() => {
     const handleStatusChange = (e: Event) => {
       const detail = (e as CustomEvent).detail
@@ -169,37 +167,42 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
     }
   }, [agent, addMessage])
 
-  // 主题切换
+  // ── 主题切换持久化 ──
   useEffect(() => {
     localStorage.setItem('bee-agent-theme', isDarkMode ? 'dark' : 'light')
-    if (containerRef.current) {
-      containerRef.current.setAttribute('data-theme', isDarkMode ? 'dark' : 'light')
-    }
   }, [isDarkMode])
 
-  // 快捷键支持
+  // ── 快捷键 Ctrl+Shift+B ──
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.key === 'B') {
         e.preventDefault()
-        if (onClose) onClose()
+        if (isOpen) {
+          setIsOpen(false)
+        } else {
+          setIsOpen(true)
+        }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  }, [isOpen])
 
-  // 拖拽功能
+  // ── 悬浮图标拖拽 ──
   useEffect(() => {
     if (!isDragging) return
 
     const handleMouseMove = (e: MouseEvent) => {
-      // 边界限制，防止拖出视口
-      const maxX = window.innerWidth - 100
-      const maxY = window.innerHeight - 50
-      setPosition({
-        x: Math.max(0, Math.min(e.clientX - dragOffset.x, maxX)),
-        y: Math.max(0, Math.min(e.clientY - dragOffset.y, maxY))
+      const dx = e.clientX - dragStart.x
+      const dy = e.clientY - dragStart.y
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        setWasDragged(true)
+      }
+      const maxX = window.innerWidth - 52
+      const maxY = window.innerHeight - 52
+      setFabPos({
+        x: Math.max(0, Math.min(e.clientX - 26, maxX)),
+        y: Math.max(0, Math.min(e.clientY - 26, maxY))
       })
     }
 
@@ -213,38 +216,47 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isDragging, dragOffset])
+  }, [isDragging, dragStart])
 
-  // 自动滚动到底部
+  // ── 自动滚动到底部 ──
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, steps])
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('.bee-agent-header')) {
-      const rect = containerRef.current?.getBoundingClientRect()
-      if (rect) {
-        setIsDragging(true)
-        setDragOffset({
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top
-        })
-      }
+  // ── 悬浮图标事件 ──
+  const handleFabMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+    setWasDragged(false)
+    setDragStart({ x: e.clientX, y: e.clientY })
+  }
+
+  const handleFabClick = () => {
+    if (!wasDragged) {
+      setIsOpen(true)
     }
   }
 
-  const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed)
+  // ── 侧边栏关闭 ──
+  const handleCloseSidebar = () => {
+    setIsOpen(false)
+    setShowSettings(false)
   }
 
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode)
+  // ── 步骤折叠切换 ──
+  const toggleStep = (index: number) => {
+    setExpandedSteps(prev => {
+      const next = new Set(prev)
+      if (next.has(index)) {
+        next.delete(index)
+      } else {
+        next.add(index)
+      }
+      return next
+    })
   }
 
-  const toggleSettings = () => {
-    setShowSettings(!showSettings)
-  }
-
+  // ── 设置操作 ──
   const saveSettings = () => {
     try {
       localStorage.setItem('bee-agent-settings', JSON.stringify(settings))
@@ -254,6 +266,7 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
     setShowSettings(false)
   }
 
+  // ── 发送消息 ──
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -262,6 +275,7 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
     const task = input.trim()
     setInput('')
     setSteps([])
+    setExpandedSteps(new Set())
 
     addMessage('user', task)
     addMessage('system', '开始执行任务...')
@@ -284,6 +298,7 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
     addMessage('system', '任务已停止')
   }
 
+  // ── 获取模型列表 ──
   const handleFetchModels = async () => {
     setIsFetchingModels(true)
     try {
@@ -306,226 +321,286 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
     }
   }
 
-  const getStatusText = () => {
+  // ── 步骤图标 ──
+  const getStepIcon = (step: AgentStep) => {
+    if (step.error) return '⚠️'
+    if (step.action?.output) return '⚡'
+    if (step.thought) return '💭'
+    return '👁️'
+  }
+
+  // ── 状态点颜色 ──
+  const getStatusDotClass = () => {
     switch (status) {
-      case 'idle':
-        return '空闲'
-      case 'running':
-        return '运行中'
-      case 'completed':
-        return '已完成'
-      case 'error':
-        return '错误'
-      default:
-        return '未知'
+      case 'running': return 'bee-status-dot bee-status-running'
+      case 'error': return 'bee-status-dot bee-status-error'
+      default: return 'bee-status-dot bee-status-idle'
     }
   }
 
+  const theme = isDarkMode ? 'dark' : 'light'
+
+  // ════════════════════════════════════════════
+  // RENDER
+  // ════════════════════════════════════════════
   return (
-    <div
-      ref={containerRef}
-      className="bee-agent-container"
-      data-theme={isDarkMode ? 'dark' : 'light'}
-      style={{
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-        height: isCollapsed ? 'auto' : '600px'
-      }}
-      onMouseDown={handleMouseDown}
-    >
-      <div className="bee-agent-header">
-        <div>
-          <h3 className="bee-agent-title">BeeAgent</h3>
-          <div className="bee-agent-status">
-            {status === 'running' && <span className="bee-agent-loading" />}
-            {' '}状态: {getStatusText()}
+    <>
+      {/* ── 悬浮图标 FAB ── */}
+      {!isOpen && (
+        <div
+          className="bee-fab"
+          style={{ left: `${fabPos.x}px`, top: `${fabPos.y}px` }}
+          onMouseDown={handleFabMouseDown}
+          onClick={handleFabClick}
+          title="BeeAgent (Ctrl+Shift+B)"
+        >
+          🐝
+        </div>
+      )}
+
+      {/* ── 侧边栏遮罩 ── */}
+      {isOpen && (
+        <div className="bee-overlay" onClick={handleCloseSidebar} />
+      )}
+
+      {/* ── 侧边栏 ── */}
+      <div
+        ref={sidebarRef}
+        className={`bee-sidebar ${isOpen ? 'bee-sidebar-open' : ''}`}
+        data-theme={theme}
+      >
+        {/* 顶栏 */}
+        <div className="bee-topbar">
+          <div className="bee-topbar-left">
+            <span className="bee-topbar-logo">🐝</span>
+            <span className="bee-topbar-title">BeeAgent</span>
+            <span className={getStatusDotClass()} />
+          </div>
+          <div className="bee-topbar-right">
+            <button
+              className="bee-topbar-btn"
+              onClick={() => setShowSettings(!showSettings)}
+              title="设置"
+            >
+              ⚙️
+            </button>
+            <button
+              className="bee-topbar-btn"
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              title="切换主题"
+            >
+              {isDarkMode ? '☀️' : '🌙'}
+            </button>
+            <button
+              className="bee-topbar-btn bee-topbar-close"
+              onClick={handleCloseSidebar}
+              title="关闭 (Ctrl+Shift+B)"
+            >
+              ✕
+            </button>
           </div>
         </div>
-        <div className="bee-agent-header-actions">
-          <button
-            className="bee-agent-icon-button"
-            onClick={toggleSettings}
-            title="设置"
-          >
-            ⚙
-          </button>
-          <button
-            className="bee-agent-icon-button"
-            onClick={toggleTheme}
-            title="切换主题"
-          >
-            {isDarkMode ? '☀' : '☽'}
-          </button>
-          <button
-            className="bee-agent-icon-button"
-            onClick={toggleCollapse}
-            title={isCollapsed ? '展开' : '折叠'}
-          >
-            {isCollapsed ? '▲' : '▼'}
-          </button>
-          {onClose && (
-            <button className="bee-agent-close" onClick={onClose} title="关闭 (Ctrl+Shift+B)">
-              ×
-            </button>
-          )}
-        </div>
-      </div>
 
-      {!isCollapsed && (
-        <>
-          {showSettings ? (
-            <div className="bee-agent-settings">
-              <h4>设置</h4>
-              <div className="bee-agent-settings-item">
-                <label>Base URL <small style={{opacity:0.6}}>(OpenAI 兼容)</small>:</label>
-                <input
-                  type="text"
-                  value={settings.baseURL}
-                  onChange={e => setSettings({ ...settings, baseURL: e.target.value })}
-                  placeholder="https://api.openai.com/v1"
-                />
-              </div>
-              <div className="bee-agent-settings-item">
-                <label>API Key:</label>
-                <input
-                  type="password"
-                  value={settings.apiKey}
-                  onChange={e => setSettings({ ...settings, apiKey: e.target.value })}
-                  placeholder="输入API Key"
-                />
-              </div>
-              <div className="bee-agent-settings-item">
-                <label>模型 <small style={{opacity:0.6}}>(从API获取)</small>:</label>
-                <div style={{display:'flex',gap:'6px'}}>
-                  <select
-                    value={settings.model}
-                    onChange={e => setSettings({ ...settings, model: e.target.value })}
-                    style={{flex:1}}
-                  >
-                    <option value="">-- 点击获取 --</option>
-                    {availableModels.map(m => (
-                      <option key={m.id} value={m.id}>{m.id}{m.owned_by ? ` (${m.owned_by})` : ''}</option>
-                    ))}
-                  </select>
-                  <button
-                    className="bee-agent-button bee-agent-button-secondary"
-                    style={{flexShrink:0,padding:'4px 8px',fontSize:'12px'}}
-                    disabled={isFetchingModels || !settings.apiKey}
-                    onClick={handleFetchModels}
-                  >
-                    {isFetchingModels ? '...' : '获取'}
-                  </button>
-                </div>
-              </div>
-              <div className="bee-agent-settings-item">
-                <label>手动输入模型名 <small style={{opacity:0.6}}>(优先使用)</small>:</label>
-                <input
-                  type="text"
-                  value={settings.customModel}
-                  onChange={e => setSettings({ ...settings, customModel: e.target.value })}
-                  placeholder="例如 qwen-plus, deepseek-chat"
-                />
-              </div>
-              <div className="bee-agent-settings-item">
-                <label>语言:</label>
+        {/* 内容区 */}
+        {showSettings ? (
+          /* ── 设置面板 ── */
+          <div className="bee-settings">
+            <h4 className="bee-settings-title">⚙️ 设置</h4>
+
+            <div className="bee-settings-group">
+              <label className="bee-settings-label">Base URL <span className="bee-settings-hint">(OpenAI 兼容)</span></label>
+              <input
+                type="text"
+                className="bee-settings-input"
+                value={settings.baseURL}
+                onChange={e => setSettings({ ...settings, baseURL: e.target.value })}
+                placeholder="https://api.openai.com/v1"
+              />
+            </div>
+
+            <div className="bee-settings-group">
+              <label className="bee-settings-label">API Key</label>
+              <input
+                type="password"
+                className="bee-settings-input"
+                value={settings.apiKey}
+                onChange={e => setSettings({ ...settings, apiKey: e.target.value })}
+                placeholder="sk-..."
+              />
+            </div>
+
+            <div className="bee-settings-group">
+              <label className="bee-settings-label">模型 <span className="bee-settings-hint">(从 API 获取)</span></label>
+              <div className="bee-settings-row">
                 <select
-                  value={settings.language}
-                  onChange={e => setSettings({ ...settings, language: e.target.value })}
+                  className="bee-settings-select"
+                  value={settings.model}
+                  onChange={e => setSettings({ ...settings, model: e.target.value })}
                 >
-                  <option value="zh-CN">中文</option>
-                  <option value="en-US">English</option>
+                  <option value="">-- 选择模型 --</option>
+                  {availableModels.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.id}{m.owned_by ? ` (${m.owned_by})` : ''}
+                    </option>
+                  ))}
                 </select>
-              </div>
-              <div className="bee-agent-settings-actions">
-                <button className="bee-agent-button" onClick={saveSettings}>
-                  保存
-                </button>
                 <button
-                  className="bee-agent-button bee-agent-button-secondary"
-                  onClick={toggleSettings}
+                  className="bee-fetch-btn"
+                  disabled={isFetchingModels || !settings.apiKey}
+                  onClick={handleFetchModels}
                 >
-                  取消
+                  {isFetchingModels ? '...' : '获取'}
                 </button>
               </div>
             </div>
-          ) : (
-            <>
-              <div className="bee-agent-messages">
-                {messages.map(msg => (
+
+            <div className="bee-settings-group">
+              <label className="bee-settings-label">手动输入模型 <span className="bee-settings-hint">(优先使用)</span></label>
+              <input
+                type="text"
+                className="bee-settings-input"
+                value={settings.customModel}
+                onChange={e => setSettings({ ...settings, customModel: e.target.value })}
+                placeholder="例如 qwen-plus, deepseek-chat"
+              />
+            </div>
+
+            <div className="bee-settings-group">
+              <label className="bee-settings-label">语言</label>
+              <select
+                className="bee-settings-select"
+                value={settings.language}
+                onChange={e => setSettings({ ...settings, language: e.target.value })}
+              >
+                <option value="zh-CN">中文</option>
+                <option value="en-US">English</option>
+              </select>
+            </div>
+
+            <div className="bee-settings-actions">
+              <button className="bee-btn-save" onClick={saveSettings}>
+                保存
+              </button>
+              <button className="bee-btn-cancel" onClick={() => setShowSettings(false)}>
+                取消
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* ── 消息区 ── */}
+            <div className="bee-messages">
+              {messages.map(msg => (
+                <div
+                  key={msg.id}
+                  className={`bee-msg bee-msg-${msg.type}`}
+                >
                   <div
-                    key={msg.id}
-                    className={`bee-agent-message bee-agent-message-${msg.type}`}
+                    className="bee-msg-content"
                     dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
                   />
-                ))}
+                  <div className="bee-msg-time">{formatTime(msg.timestamp)}</div>
+                </div>
+              ))}
 
-                {steps.length > 0 && (
-                  <div className="bee-agent-timeline">
-                    <h4>执行步骤</h4>
-                    {steps.map(step => (
-                      <div key={step.index} className="bee-agent-step">
-                        <div className="bee-agent-step-header">
-                          <span className="bee-agent-step-index">步骤 {step.index + 1}</span>
-                          <span className="bee-agent-step-time">
-                            {formatTime(step.timestamp)}
-                          </span>
+              {/* 打字指示器 */}
+              {status === 'running' && (
+                <div className="bee-typing">
+                  <span className="bee-typing-dot" />
+                  <span className="bee-typing-dot" />
+                  <span className="bee-typing-dot" />
+                </div>
+              )}
+
+              {/* 步骤时间线 */}
+              {steps.length > 0 && (
+                <div className="bee-timeline">
+                  {steps.map(step => (
+                    <div key={step.index} className="bee-timeline-item">
+                      <div className="bee-timeline-line" />
+                      <div
+                        className="bee-timeline-icon"
+                        onClick={() => toggleStep(step.index)}
+                      >
+                        {getStepIcon(step)}
+                      </div>
+                      <div
+                        className={`bee-timeline-card ${expandedSteps.has(step.index) ? 'bee-timeline-card-expanded' : ''}`}
+                        onClick={() => toggleStep(step.index)}
+                      >
+                        <div className="bee-timeline-header">
+                          <span className="bee-timeline-step-label">步骤 {step.index + 1}</span>
+                          <span className="bee-timeline-step-time">{formatTime(step.timestamp)}</span>
                         </div>
-                        <div className="bee-agent-step-thought">
-                          {step.thought}
-                        </div>
-                        <div className="bee-agent-step-action">
-                          ▶ {step.action.name}
-                          <code>{JSON.stringify(step.action.input)}</code>
-                        </div>
-                        <div className="bee-agent-step-output">
-                          ◀ {step.action.output}
-                        </div>
-                        {step.error && (
-                          <div className="bee-agent-step-error">
-                            ⚠ {step.error}
+                        {expandedSteps.has(step.index) && (
+                          <div className="bee-timeline-body">
+                            {step.thought && (
+                              <div className="bee-timeline-thought">
+                                💭 {step.thought}
+                              </div>
+                            )}
+                            {step.action && (
+                              <div className="bee-timeline-action">
+                                ⚡ {step.action.name}
+                                <code>{JSON.stringify(step.action.input)}</code>
+                              </div>
+                            )}
+                            {step.action?.output && (
+                              <div className="bee-timeline-output">
+                                ◀ {step.action.output}
+                              </div>
+                            )}
+                            {step.error && (
+                              <div className="bee-timeline-error">
+                                ⚠️ {step.error}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* ── 输入区 ── */}
+            <div className="bee-input-area">
+              <form onSubmit={handleSubmit} className="bee-input-form">
+                <input
+                  type="text"
+                  className="bee-input"
+                  placeholder="输入任务指令..."
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  disabled={status === 'running'}
+                />
+                {status === 'running' ? (
+                  <button
+                    type="button"
+                    className="bee-send-btn bee-stop-btn"
+                    onClick={handleStop}
+                    title="停止"
+                  >
+                    ■
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    className="bee-send-btn"
+                    disabled={!input.trim()}
+                    title="发送"
+                  >
+                    →
+                  </button>
                 )}
-
-                <div ref={messagesEndRef} />
-              </div>
-
-              <div className="bee-agent-input-container">
-                <form onSubmit={handleSubmit} className="bee-agent-input-wrapper">
-                  <input
-                    type="text"
-                    className="bee-agent-input"
-                    placeholder="输入任务指令..."
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    disabled={status === 'running'}
-                  />
-                  {status === 'running' ? (
-                    <button
-                      type="button"
-                      className="bee-agent-button bee-agent-button-stop"
-                      onClick={handleStop}
-                    >
-                      停止
-                    </button>
-                  ) : (
-                    <button
-                      type="submit"
-                      className="bee-agent-button"
-                      disabled={!input.trim()}
-                    >
-                      发送
-                    </button>
-                  )}
-                </form>
-              </div>
-            </>
-          )}
-        </>
-      )}
-    </div>
+              </form>
+            </div>
+          </>
+        )}
+      </div>
+    </>
   )
 }
