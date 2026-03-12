@@ -17,12 +17,11 @@ function triggerEvents(element: Element, eventType: string): void {
 }
 
 /**
- * 使用 React 兼容方式设置 input/textarea 的值
- * @description React 使用内部 value tracker 追踪输入框的值。
- * 直接设置 element.value 不会触发 React 的 onChange，
- * 因为 React 比较的是 tracker 中缓存的旧值。
- * 解决方法：用原始的 HTMLInputElement.prototype.value setter 设值，
- * 绕过 React 的 tracker 劫持，然后派发原生 input 事件。
+ * 使用 React/Vue 兼容方式设置 input/textarea 的值
+ * @description
+ * - React：使用原始 value setter 绕过 React 内部 value tracker 劫持
+ * - Vue：派发带 inputType 的 InputEvent，触发 v-model 更新
+ * - 原生：派发标准 input 事件
  */
 function setNativeValue(element: HTMLInputElement | HTMLTextAreaElement, value: string): void {
   // 获取原始的 value setter（React 劫持前的）
@@ -34,12 +33,16 @@ function setNativeValue(element: HTMLInputElement | HTMLTextAreaElement, value: 
   if (nativeSetter) {
     nativeSetter.call(element, value)
   } else {
-    // 兜底：直接赋值
     element.value = value
   }
 
-  // 派发 input 事件（React 16+ 监听的是这个）
-  const inputEvent = new Event('input', { bubbles: true, cancelable: true })
+  // 派发 InputEvent（比普通 Event 更真实，Vue/React 都认）
+  const inputEvent = new InputEvent('input', {
+    bubbles: true,
+    cancelable: true,
+    inputType: 'insertText',
+    data: value.slice(-1) || null
+  })
   element.dispatchEvent(inputEvent)
 }
 
@@ -118,39 +121,55 @@ export async function inputText(element: Element, text: string): Promise<void> {
   setNativeValue(element, '')
   await delay(50)
 
-  // 触发 compositionstart（兼容 Vue 中文输入法模式 + Element UI 等组件库）
-  element.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }))
+  // 检测是否包含非 ASCII 字符（中日韩等需要 IME 输入法的语言）
+  const needsIME = /[^\x00-\x7F]/.test(text)
 
-  // 逐字输入（模拟真实输入 + React/Vue 兼容）
-  for (const char of text) {
-    // 模拟 keydown
-    element.dispatchEvent(new KeyboardEvent('keydown', {
-      key: char, code: `Key${char.toUpperCase()}`, bubbles: true, cancelable: true
+  if (needsIME) {
+    // === IME 模式：模拟中文/日文等输入法 ===
+    // 整段文本作为一次 composition 输入，这是 IME 的真实行为
+    element.dispatchEvent(new CompositionEvent('compositionstart', {
+      bubbles: true, data: ''
     }))
 
-    // 使用 nativeSetter 设值（绕过 React tracker，Vue 也兼容）
-    setNativeValue(element, element.value + char)
+    // 逐字触发 compositionupdate + input
+    let current = ''
+    for (const char of text) {
+      current += char
 
-    // compositionupdate（Vue v-model.lazy 等场景）
-    element.dispatchEvent(new CompositionEvent('compositionupdate', {
-      bubbles: true, data: element.value
+      element.dispatchEvent(new CompositionEvent('compositionupdate', {
+        bubbles: true, data: current
+      }))
+
+      // 用 nativeSetter 设值
+      setNativeValue(element, current)
+
+      await delay(30)
+    }
+
+    // compositionend — Vue 在此时才真正更新 v-model
+    element.dispatchEvent(new CompositionEvent('compositionend', {
+      bubbles: true, data: text
     }))
 
-    // 模拟 keyup
-    element.dispatchEvent(new KeyboardEvent('keyup', {
-      key: char, code: `Key${char.toUpperCase()}`, bubbles: true, cancelable: true
-    }))
+    // 最终确认值
+    setNativeValue(element, text)
 
-    await delay(30)
+  } else {
+    // === 键盘模式：纯 ASCII 逐字输入 ===
+    for (const char of text) {
+      element.dispatchEvent(new KeyboardEvent('keydown', {
+        key: char, code: `Key${char.toUpperCase()}`, bubbles: true, cancelable: true
+      }))
+
+      setNativeValue(element, element.value + char)
+
+      element.dispatchEvent(new KeyboardEvent('keyup', {
+        key: char, code: `Key${char.toUpperCase()}`, bubbles: true, cancelable: true
+      }))
+
+      await delay(30)
+    }
   }
-
-  // compositionend（Vue 在此时才真正更新 v-model 绑定值）
-  element.dispatchEvent(new CompositionEvent('compositionend', {
-    bubbles: true, data: element.value
-  }))
-
-  // 再派发一次 input，确保所有框架都能拿到最终值
-  setNativeValue(element, element.value)
 
   // 最后触发 change（一些框架依赖 blur 时的 change）
   triggerEvents(element, 'change')
