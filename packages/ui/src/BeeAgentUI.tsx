@@ -7,22 +7,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import type { BeeAgent, AgentStatus, AgentStep, WatchEngine, WatchConfig } from '@bee-agent/agent-core'
 import { WatchPanel } from './WatchPanel'
-import cssText from './styles.css?inline'
-
-/**
- * 注入 CSS 样式到页面（如果尚未注入）
- * 用于 IIFE 模式下将样式内联到 JS 中
- */
-function injectStyles(): void {
-  if (document.getElementById('bee-agent-styles')) return
-  const style = document.createElement('style')
-  style.id = 'bee-agent-styles'
-  style.textContent = cssText
-  document.head.appendChild(style)
-}
-
-// 模块加载时立即注入样式
-injectStyles()
 
 interface Message {
   id: string
