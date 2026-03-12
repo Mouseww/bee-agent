@@ -6,17 +6,25 @@
 const DEFAULT_BASE_URL = 'https://api.openai.com/v1'
 
 // 加载保存的设置
-chrome.storage.sync.get(['apiKey', 'baseURL', 'model', 'customModel', 'language'], (result) => {
+chrome.storage.sync.get(['apiKey', 'baseURL', 'model', 'customModel', 'language', 'autoInject', 'urlFilter'], (result) => {
   const apiKeyEl = document.getElementById('apiKey') as HTMLInputElement | null
   const baseURLEl = document.getElementById('baseURL') as HTMLInputElement | null
   const modelEl = document.getElementById('model') as HTMLSelectElement | null
   const customModelEl = document.getElementById('customModel') as HTMLInputElement | null
   const languageEl = document.getElementById('language') as HTMLSelectElement | null
+  const autoInjectEl = document.getElementById('autoInject') as HTMLInputElement | null
+  const urlFilterEl = document.getElementById('urlFilter') as HTMLTextAreaElement | null
+  const urlFilterGroup = document.getElementById('urlFilterGroup') as HTMLDivElement | null
 
   if (result.apiKey && apiKeyEl) apiKeyEl.value = result.apiKey
   if (result.baseURL && baseURLEl) baseURLEl.value = result.baseURL
   if (result.language && languageEl) languageEl.value = result.language
   if (result.customModel && customModelEl) customModelEl.value = result.customModel
+  if (result.autoInject && autoInjectEl) {
+    autoInjectEl.checked = true
+    if (urlFilterGroup) urlFilterGroup.style.display = 'block'
+  }
+  if (result.urlFilter && urlFilterEl) urlFilterEl.value = result.urlFilter
 
   // 如果有保存的 baseURL 和 apiKey，自动拉取模型
   if (result.apiKey && result.baseURL) {
@@ -109,6 +117,15 @@ async function fetchModels(baseURL: string, apiKey: string, selectedModel?: stri
   }
 }
 
+// 自动注入开关 → 显示/隐藏 URL 过滤
+document.getElementById('autoInject')?.addEventListener('change', (e) => {
+  const checked = (e.target as HTMLInputElement).checked
+  const urlFilterGroup = document.getElementById('urlFilterGroup') as HTMLDivElement | null
+  if (urlFilterGroup) {
+    urlFilterGroup.style.display = checked ? 'block' : 'none'
+  }
+})
+
 // 获取模型按钮
 document.getElementById('fetchModelsBtn')?.addEventListener('click', () => {
   const apiKey = (document.getElementById('apiKey') as HTMLInputElement | null)?.value || ''
@@ -129,6 +146,8 @@ document.getElementById('saveBtn')?.addEventListener('click', () => {
   const modelSelect = (document.getElementById('model') as HTMLSelectElement | null)?.value || ''
   const customModel = (document.getElementById('customModel') as HTMLInputElement | null)?.value || ''
   const language = (document.getElementById('language') as HTMLSelectElement | null)?.value || 'zh-CN'
+  const autoInject = (document.getElementById('autoInject') as HTMLInputElement | null)?.checked || false
+  const urlFilter = (document.getElementById('urlFilter') as HTMLTextAreaElement | null)?.value || ''
 
   // 优先使用自定义模型名，否则用下拉列表的
   const model = customModel || modelSelect
@@ -143,7 +162,7 @@ document.getElementById('saveBtn')?.addEventListener('click', () => {
     return
   }
 
-  chrome.storage.sync.set({ apiKey, baseURL, model, customModel, language }, () => {
+  chrome.storage.sync.set({ apiKey, baseURL, model, customModel, language, autoInject, urlFilter }, () => {
     showStatus('设置已保存！', 'success')
   })
 })

@@ -85,12 +85,42 @@ async function activateBeeAgent() {
   }
 }
 
-// 自动激活（如果之前已配置）
-chrome.storage.sync.get(['autoActivate'], (result) => {
-  if (result.autoActivate) {
-    activateBeeAgent()
+// 自动注入检查
+chrome.storage.sync.get(['autoInject', 'urlFilter', 'apiKey'], (result) => {
+  if (result.autoInject && result.apiKey) {
+    const currentURL = window.location.href
+    const urlFilter = (result.urlFilter || '').trim()
+
+    if (urlFilter) {
+      // 有 URL 过滤规则，检查是否匹配
+      const patterns = urlFilter.split('\n').map((p: string) => p.trim()).filter(Boolean)
+      const matched = patterns.some((pattern: string) => urlMatchesPattern(currentURL, pattern))
+      if (matched) {
+        // 延迟注入，确保页面完全加载
+        setTimeout(() => activateBeeAgent(), 1500)
+      }
+    } else {
+      // 无过滤规则，所有页面自动注入
+      setTimeout(() => activateBeeAgent(), 1500)
+    }
   }
 })
+
+/**
+ * URL 通配符匹配
+ * 支持 * 通配符，例如 https://*.example.com/*
+ */
+function urlMatchesPattern(url: string, pattern: string): boolean {
+  // 将通配符转换为正则
+  const escaped = pattern
+    .replace(/[.+?^${}()|[\]\\]/g, '\\$&')  // 转义特殊字符
+    .replace(/\*/g, '.*')                     // * → .*
+  try {
+    return new RegExp('^' + escaped + '$', 'i').test(url)
+  } catch {
+    return false
+  }
+}
 
 // 页面卸载时清理资源，防止内存泄漏
 window.addEventListener('beforeunload', () => {
