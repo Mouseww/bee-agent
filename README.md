@@ -24,6 +24,12 @@ An in-house project by BeeQueen Group, inspired by [alibaba/page-agent](https://
 | 🔑 模型兼容 | Model Compat | 支持任何 OpenAI 兼容 API / Any OpenAI-compatible API (GPT, Claude, Qwen, DeepSeek...) |
 
 ---
+## 页面截图
+<img width="374" height="607" alt="image" src="https://github.com/user-attachments/assets/54119aee-bc16-4157-bf07-6034a81f64d8" />
+<img width="640" height="945" alt="image" src="https://github.com/user-attachments/assets/dc40f82d-ffba-4b9a-afd7-36f8688c2333" />
+<img width="377" height="944" alt="image" src="https://github.com/user-attachments/assets/be0e7dd8-cf30-4526-bd30-a2d225cdbdea" />
+
+---
 
 ## 📦 项目架构 / Architecture
 
