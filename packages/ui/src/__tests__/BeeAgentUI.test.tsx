@@ -1,16 +1,16 @@
 /**
  * BeeAgentUI 组件单元测试
  * @description 测试核心交互：消息发送、设置面板、主题切换
+ *              组件采用悬浮图标 + 侧边栏设计
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import React from 'react'
 import { render, screen, fireEvent, act, waitFor, cleanup } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { BeeAgentUI } from '../BeeAgentUI'
 
 // Mock CSS import
-vi.mock('../styles.css', () => ({}))
+vi.mock('../styles.css?inline', () => ({ default: '' }))
 
 /** 创建 BeeAgent mock 实例（模拟 EventTarget 行为） */
 function createMockAgent() {
@@ -40,6 +40,24 @@ function createMockAgent() {
   } as any
 }
 
+/**
+ * 辅助函数：渲染组件并打开侧边栏
+ * 组件默认只显示悬浮图标，需要点击打开侧边栏才能看到内容
+ */
+async function renderAndOpenSidebar(agent: any, props: Record<string, any> = {}) {
+  const result = render(<BeeAgentUI agent={agent} {...props} />)
+
+  // 点击悬浮图标打开侧边栏
+  const fab = result.container.querySelector('.bee-fab')
+  if (fab) {
+    await act(async () => {
+      fireEvent.click(fab)
+    })
+  }
+
+  return result
+}
+
 describe('BeeAgentUI', () => {
   let agent: ReturnType<typeof createMockAgent>
 
@@ -55,64 +73,71 @@ describe('BeeAgentUI', () => {
   })
 
   describe('基础渲染', () => {
-    it('应该渲染 BeeAgent 标题', () => {
-      render(<BeeAgentUI agent={agent} />)
+    it('应该渲染 BeeAgent 标题', async () => {
+      await renderAndOpenSidebar(agent)
 
       expect(screen.getByText('BeeAgent')).toBeDefined()
     })
 
-    it('应该显示初始状态为空闲', () => {
-      render(<BeeAgentUI agent={agent} />)
+    it('应该显示状态点（初始为空闲）', async () => {
+      const { container } = await renderAndOpenSidebar(agent)
 
-      expect(screen.getByText(/空闲/)).toBeDefined()
+      // 组件使用状态点而非状态文本，idle 对应 bee-status-idle
+      const statusDot = container.querySelector('.bee-status-dot.bee-status-idle')
+      expect(statusDot).not.toBeNull()
     })
 
-    it('应该渲染输入框', () => {
-      render(<BeeAgentUI agent={agent} />)
+    it('应该渲染输入框', async () => {
+      await renderAndOpenSidebar(agent)
 
       const input = screen.getByPlaceholderText('输入任务指令...')
       expect(input).toBeDefined()
     })
 
-    it('应该渲染发送按钮（初始禁用）', () => {
-      render(<BeeAgentUI agent={agent} />)
+    it('应该渲染发送按钮（初始禁用）', async () => {
+      const { container } = await renderAndOpenSidebar(agent)
 
-      const button = screen.getByText('发送')
-      expect(button).toBeDefined()
-      expect((button as HTMLButtonElement).disabled).toBe(true)
+      // 发送按钮使用 → 符号，class 为 bee-send-btn
+      const button = container.querySelector('.bee-send-btn') as HTMLButtonElement
+      expect(button).not.toBeNull()
+      expect(button.disabled).toBe(true)
     })
 
-    it('应该在传入 onClose 时渲染关闭按钮', () => {
-      const onClose = vi.fn()
-      render(<BeeAgentUI agent={agent} onClose={onClose} />)
+    it('应该渲染关闭按钮（侧边栏打开时始终存在）', async () => {
+      await renderAndOpenSidebar(agent)
 
       const closeButton = screen.getByTitle('关闭 (Ctrl+Shift+B)')
       expect(closeButton).toBeDefined()
     })
 
-    it('不传入 onClose 时不应渲染关闭按钮', () => {
-      render(<BeeAgentUI agent={agent} />)
+    it('初始状态应显示悬浮图标而非侧边栏', () => {
+      const { container } = render(<BeeAgentUI agent={agent} />)
 
-      const closeButton = screen.queryByTitle('关闭 (Ctrl+Shift+B)')
-      expect(closeButton).toBeNull()
+      const fab = container.querySelector('.bee-fab')
+      expect(fab).not.toBeNull()
+
+      // 侧边栏存在但未打开（没有 bee-sidebar-open 类）
+      const sidebar = container.querySelector('.bee-sidebar')
+      expect(sidebar).not.toBeNull()
+      expect(sidebar?.classList.contains('bee-sidebar-open')).toBe(false)
     })
   })
 
   describe('消息发送', () => {
     it('输入内容后发送按钮应该启用', async () => {
-      render(<BeeAgentUI agent={agent} />)
+      const { container } = await renderAndOpenSidebar(agent)
 
       const input = screen.getByPlaceholderText('输入任务指令...')
       await act(async () => {
         fireEvent.change(input, { target: { value: '测试任务' } })
       })
 
-      const button = screen.getByText('发送')
-      expect((button as HTMLButtonElement).disabled).toBe(false)
+      const button = container.querySelector('.bee-send-btn') as HTMLButtonElement
+      expect(button.disabled).toBe(false)
     })
 
     it('提交表单应该调用 agent.execute 并显示消息', async () => {
-      render(<BeeAgentUI agent={agent} />)
+      await renderAndOpenSidebar(agent)
 
       const input = screen.getByPlaceholderText('输入任务指令...')
       const form = input.closest('form')!
@@ -129,7 +154,7 @@ describe('BeeAgentUI', () => {
     })
 
     it('提交后输入框应该被清空', async () => {
-      render(<BeeAgentUI agent={agent} />)
+      await renderAndOpenSidebar(agent)
 
       const input = screen.getByPlaceholderText('输入任务指令...') as HTMLInputElement
 
@@ -147,7 +172,7 @@ describe('BeeAgentUI', () => {
     })
 
     it('空输入不应触发 execute', async () => {
-      render(<BeeAgentUI agent={agent} />)
+      await renderAndOpenSidebar(agent)
 
       const input = screen.getByPlaceholderText('输入任务指令...')
       const form = input.closest('form')!
@@ -161,7 +186,7 @@ describe('BeeAgentUI', () => {
 
     it('execute 成功时应该显示成功消息', async () => {
       agent.execute.mockResolvedValue({ success: true, message: '任务已完成' })
-      render(<BeeAgentUI agent={agent} />)
+      await renderAndOpenSidebar(agent)
 
       const input = screen.getByPlaceholderText('输入任务指令...')
       const form = input.closest('form')!
@@ -180,7 +205,7 @@ describe('BeeAgentUI', () => {
 
     it('execute 失败时应该显示失败消息', async () => {
       agent.execute.mockResolvedValue({ success: false, message: '找不到元素' })
-      render(<BeeAgentUI agent={agent} />)
+      await renderAndOpenSidebar(agent)
 
       const input = screen.getByPlaceholderText('输入任务指令...')
       const form = input.closest('form')!
@@ -199,7 +224,7 @@ describe('BeeAgentUI', () => {
 
     it('execute 抛出异常时应该显示错误消息', async () => {
       agent.execute.mockRejectedValue(new Error('网络错误'))
-      render(<BeeAgentUI agent={agent} />)
+      await renderAndOpenSidebar(agent)
 
       const input = screen.getByPlaceholderText('输入任务指令...')
       const form = input.closest('form')!
@@ -226,18 +251,20 @@ describe('BeeAgentUI', () => {
       expect(agent.addEventListener).toHaveBeenCalledWith('error', expect.any(Function))
     })
 
-    it('statuschange 事件应该更新状态显示', async () => {
-      render(<BeeAgentUI agent={agent} />)
+    it('statuschange 事件应该更新状态点样式', async () => {
+      const { container } = await renderAndOpenSidebar(agent)
 
       await act(async () => {
         agent._emit('statuschange', { status: 'running' })
       })
 
-      expect(screen.getByText(/运行中/)).toBeDefined()
+      // running 状态对应 bee-status-running 类
+      const statusDot = container.querySelector('.bee-status-dot.bee-status-running')
+      expect(statusDot).not.toBeNull()
     })
 
     it('error 事件应该显示错误消息', async () => {
-      render(<BeeAgentUI agent={agent} />)
+      await renderAndOpenSidebar(agent)
 
       await act(async () => {
         agent._emit('error', { error: '连接超时' })
@@ -259,23 +286,25 @@ describe('BeeAgentUI', () => {
 
   describe('停止任务', () => {
     it('运行状态下应该显示停止按钮', async () => {
-      render(<BeeAgentUI agent={agent} />)
+      const { container } = await renderAndOpenSidebar(agent)
 
       await act(async () => {
         agent._emit('statuschange', { status: 'running' })
       })
 
-      expect(screen.getByText('停止')).toBeDefined()
+      // 停止按钮使用 ■ 符号，class 为 bee-stop-btn
+      const stopButton = container.querySelector('.bee-stop-btn')
+      expect(stopButton).not.toBeNull()
     })
 
     it('点击停止按钮应该调用 agent.stop', async () => {
-      render(<BeeAgentUI agent={agent} />)
+      const { container } = await renderAndOpenSidebar(agent)
 
       await act(async () => {
         agent._emit('statuschange', { status: 'running' })
       })
 
-      const stopButton = screen.getByText('停止')
+      const stopButton = container.querySelector('.bee-stop-btn')!
       await act(async () => {
         fireEvent.click(stopButton)
       })
@@ -286,21 +315,20 @@ describe('BeeAgentUI', () => {
 
   describe('设置面板', () => {
     it('点击设置按钮应该打开设置面板', async () => {
-      render(<BeeAgentUI agent={agent} />)
+      await renderAndOpenSidebar(agent)
 
       const settingsButton = screen.getByTitle('设置')
       await act(async () => {
         fireEvent.click(settingsButton)
       })
 
-      // 设置面板中应该有 "设置" 标题和 "Base URL" 标签
-      expect(screen.getByText('设置')).toBeDefined()
+      // 设置面板中应该有 "⚙️ 设置" 标题和 "Base URL" 标签
       expect(screen.getByText(/Base URL/)).toBeDefined()
       expect(screen.getByText(/API Key/)).toBeDefined()
     })
 
     it('设置面板应该包含所有设置项', async () => {
-      render(<BeeAgentUI agent={agent} />)
+      await renderAndOpenSidebar(agent)
 
       const settingsButton = screen.getByTitle('设置')
       await act(async () => {
@@ -308,12 +336,12 @@ describe('BeeAgentUI', () => {
       })
 
       expect(screen.getByPlaceholderText('https://api.openai.com/v1')).toBeDefined()
-      expect(screen.getByPlaceholderText('输入API Key')).toBeDefined()
+      expect(screen.getByPlaceholderText('sk-...')).toBeDefined()
       expect(screen.getByPlaceholderText('例如 qwen-plus, deepseek-chat')).toBeDefined()
     })
 
     it('保存按钮应该将设置持久化到 localStorage', async () => {
-      render(<BeeAgentUI agent={agent} />)
+      await renderAndOpenSidebar(agent)
 
       const settingsButton = screen.getByTitle('设置')
       await act(async () => {
@@ -335,7 +363,7 @@ describe('BeeAgentUI', () => {
     })
 
     it('保存后应该关闭设置面板', async () => {
-      render(<BeeAgentUI agent={agent} />)
+      await renderAndOpenSidebar(agent)
 
       const settingsButton = screen.getByTitle('设置')
       await act(async () => {
@@ -352,7 +380,7 @@ describe('BeeAgentUI', () => {
     })
 
     it('取消按钮应该关闭设置面板而不保存', async () => {
-      render(<BeeAgentUI agent={agent} />)
+      await renderAndOpenSidebar(agent)
 
       const settingsButton = screen.getByTitle('设置')
       await act(async () => {
@@ -385,7 +413,7 @@ describe('BeeAgentUI', () => {
         language: 'en-US'
       }))
 
-      render(<BeeAgentUI agent={agent} />)
+      await renderAndOpenSidebar(agent)
 
       const settingsButton = screen.getByTitle('设置')
       await act(async () => {
@@ -401,114 +429,111 @@ describe('BeeAgentUI', () => {
   })
 
   describe('主题切换', () => {
-    it('默认应该是浅色主题', () => {
-      const { container } = render(<BeeAgentUI agent={agent} />)
+    it('默认应该是暗色主题', async () => {
+      const { container } = await renderAndOpenSidebar(agent)
 
-      const uiContainer = container.querySelector('.bee-agent-container')
-      expect(uiContainer?.getAttribute('data-theme')).toBe('light')
+      // 组件使用 .bee-sidebar 带 data-theme 属性，默认暗色
+      const sidebar = container.querySelector('.bee-sidebar')
+      expect(sidebar?.getAttribute('data-theme')).toBe('dark')
     })
 
-    it('点击主题按钮应该切换到暗色主题', async () => {
-      const { container } = render(<BeeAgentUI agent={agent} />)
+    it('点击主题按钮应该切换到浅色主题', async () => {
+      const { container } = await renderAndOpenSidebar(agent)
 
       const themeButton = screen.getByTitle('切换主题')
       await act(async () => {
         fireEvent.click(themeButton)
       })
 
-      const uiContainer = container.querySelector('.bee-agent-container')
-      expect(uiContainer?.getAttribute('data-theme')).toBe('dark')
+      const sidebar = container.querySelector('.bee-sidebar')
+      expect(sidebar?.getAttribute('data-theme')).toBe('light')
     })
 
     it('切换主题应该持久化到 localStorage', async () => {
-      render(<BeeAgentUI agent={agent} />)
+      await renderAndOpenSidebar(agent)
 
       const themeButton = screen.getByTitle('切换主题')
       await act(async () => {
         fireEvent.click(themeButton)
       })
 
-      expect(localStorage.getItem('bee-agent-theme')).toBe('dark')
-    })
-
-    it('再次点击应该切换回浅色主题', async () => {
-      const { container } = render(<BeeAgentUI agent={agent} />)
-
-      const themeButton = screen.getByTitle('切换主题')
-
-      // 切换到暗色
-      await act(async () => {
-        fireEvent.click(themeButton)
-      })
-      // 切换回浅色
-      await act(async () => {
-        fireEvent.click(themeButton)
-      })
-
-      const uiContainer = container.querySelector('.bee-agent-container')
-      expect(uiContainer?.getAttribute('data-theme')).toBe('light')
+      // 默认 dark，点一次变 light
       expect(localStorage.getItem('bee-agent-theme')).toBe('light')
     })
 
-    it('应该从 localStorage 恢复暗色主题', async () => {
-      localStorage.setItem('bee-agent-theme', 'dark')
+    it('再次点击应该切换回暗色主题', async () => {
+      const { container } = await renderAndOpenSidebar(agent)
 
+      const themeButton = screen.getByTitle('切换主题')
+
+      // 切换到浅色
+      await act(async () => {
+        fireEvent.click(themeButton)
+      })
+      // 切换回暗色
+      await act(async () => {
+        fireEvent.click(themeButton)
+      })
+
+      const sidebar = container.querySelector('.bee-sidebar')
+      expect(sidebar?.getAttribute('data-theme')).toBe('dark')
+      expect(localStorage.getItem('bee-agent-theme')).toBe('dark')
+    })
+
+    it('应该从 localStorage 恢复浅色主题', async () => {
+      localStorage.setItem('bee-agent-theme', 'light')
+
+      const { container } = await renderAndOpenSidebar(agent)
+
+      const sidebar = container.querySelector('.bee-sidebar')
+      expect(sidebar?.getAttribute('data-theme')).toBe('light')
+    })
+  })
+
+  describe('侧边栏开关', () => {
+    it('点击悬浮图标应该打开侧边栏', async () => {
       const { container } = render(<BeeAgentUI agent={agent} />)
 
-      const uiContainer = container.querySelector('.bee-agent-container')
-      expect(uiContainer?.getAttribute('data-theme')).toBe('dark')
-    })
-  })
-
-  describe('折叠/展开', () => {
-    it('点击折叠按钮应该隐藏消息区域和输入区域', async () => {
-      render(<BeeAgentUI agent={agent} />)
-
-      const collapseButton = screen.getByTitle('折叠')
+      const fab = container.querySelector('.bee-fab')!
       await act(async () => {
-        fireEvent.click(collapseButton)
+        fireEvent.click(fab)
       })
 
-      // 折叠后输入框不应存在
-      expect(screen.queryByPlaceholderText('输入任务指令...')).toBeNull()
+      const sidebar = container.querySelector('.bee-sidebar')
+      expect(sidebar?.classList.contains('bee-sidebar-open')).toBe(true)
     })
 
-    it('再次点击应该展开', async () => {
-      render(<BeeAgentUI agent={agent} />)
-
-      // 折叠
-      const collapseButton = screen.getByTitle('折叠')
-      await act(async () => {
-        fireEvent.click(collapseButton)
-      })
-
-      // 展开
-      const expandButton = screen.getByTitle('展开')
-      await act(async () => {
-        fireEvent.click(expandButton)
-      })
-
-      expect(screen.getByPlaceholderText('输入任务指令...')).toBeDefined()
-    })
-  })
-
-  describe('关闭功能', () => {
-    it('点击关闭按钮应该调用 onClose', async () => {
-      const onClose = vi.fn()
-      render(<BeeAgentUI agent={agent} onClose={onClose} />)
+    it('点击关闭按钮应该关闭侧边栏', async () => {
+      const { container } = await renderAndOpenSidebar(agent)
 
       const closeButton = screen.getByTitle('关闭 (Ctrl+Shift+B)')
       await act(async () => {
         fireEvent.click(closeButton)
       })
 
-      expect(onClose).toHaveBeenCalledOnce()
+      const sidebar = container.querySelector('.bee-sidebar')
+      expect(sidebar?.classList.contains('bee-sidebar-open')).toBe(false)
+    })
+  })
+
+  describe('关闭功能', () => {
+    it('点击关闭按钮应该关闭侧边栏', async () => {
+      const { container } = await renderAndOpenSidebar(agent, { onClose: vi.fn() })
+
+      const closeButton = screen.getByTitle('关闭 (Ctrl+Shift+B)')
+      await act(async () => {
+        fireEvent.click(closeButton)
+      })
+
+      // 关闭按钮的行为是关闭侧边栏（setIsOpen(false)）
+      const sidebar = container.querySelector('.bee-sidebar')
+      expect(sidebar?.classList.contains('bee-sidebar-open')).toBe(false)
     })
 
-    it('Ctrl+Shift+B 快捷键应该调用 onClose', async () => {
-      const onClose = vi.fn()
-      render(<BeeAgentUI agent={agent} onClose={onClose} />)
+    it('Ctrl+Shift+B 快捷键应该切换侧边栏', async () => {
+      const { container } = await renderAndOpenSidebar(agent)
 
+      // 侧边栏已打开，按快捷键应该关闭
       await act(async () => {
         fireEvent.keyDown(window, {
           key: 'B',
@@ -517,36 +542,29 @@ describe('BeeAgentUI', () => {
         })
       })
 
-      expect(onClose).toHaveBeenCalledOnce()
+      const sidebar = container.querySelector('.bee-sidebar')
+      expect(sidebar?.classList.contains('bee-sidebar-open')).toBe(false)
     })
   })
 
-  describe('状态文本显示', () => {
-    it('应该正确显示各种状态文本', async () => {
-      render(<BeeAgentUI agent={agent} />)
+  describe('状态点显示', () => {
+    it('应该正确显示各种状态对应的状态点', async () => {
+      const { container } = await renderAndOpenSidebar(agent)
 
-      // idle -> 空闲
-      expect(screen.getByText(/空闲/)).toBeDefined()
+      // idle -> bee-status-idle
+      expect(container.querySelector('.bee-status-dot.bee-status-idle')).not.toBeNull()
 
-      // running -> 运行中
+      // running -> bee-status-running
       await act(async () => {
         agent._emit('statuschange', { status: 'running' })
       })
-      expect(screen.getByText(/运行中/)).toBeDefined()
+      expect(container.querySelector('.bee-status-dot.bee-status-running')).not.toBeNull()
 
-      // completed -> 已完成
-      await act(async () => {
-        agent._emit('statuschange', { status: 'completed' })
-      })
-      expect(screen.getByText(/已完成/)).toBeDefined()
-
-      // error -> 错误
+      // error -> bee-status-error
       await act(async () => {
         agent._emit('statuschange', { status: 'error' })
       })
-      // "错误" 可能出现在多处（状态+消息），只需确认状态区显示
-      const statusDiv = screen.getByText(/状态:/)
-      expect(statusDiv.textContent).toContain('错误')
+      expect(container.querySelector('.bee-status-dot.bee-status-error')).not.toBeNull()
     })
   })
 })
