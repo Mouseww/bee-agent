@@ -12,8 +12,9 @@
   --bee-text-secondary: rgba(255, 255, 255, 0.6);
   --bee-bubble-user: linear-gradient(135deg, #667eea, #764ba2);
   --bee-bubble-ai: rgba(255, 255, 255, 0.08);
-  --bee-input-bg: rgba(255, 255, 255, 0.08);
-  --bee-input-border: rgba(255, 255, 255, 0.1);
+  --bee-input-bg: rgba(255, 255, 255, 0.12);
+  --bee-input-border: rgba(255, 255, 255, 0.18);
+  --bee-input-text: #f0f0ff;
   --bee-card-bg: rgba(255, 255, 255, 0.05);
   --bee-divider: rgba(255, 255, 255, 0.08);
   --bee-scrollbar: rgba(255, 255, 255, 0.15);
@@ -26,8 +27,9 @@
   --bee-text-secondary: rgba(255, 255, 255, 0.6);
   --bee-bubble-user: linear-gradient(135deg, #667eea, #764ba2);
   --bee-bubble-ai: rgba(255, 255, 255, 0.08);
-  --bee-input-bg: rgba(255, 255, 255, 0.08);
-  --bee-input-border: rgba(255, 255, 255, 0.1);
+  --bee-input-bg: rgba(255, 255, 255, 0.12);
+  --bee-input-border: rgba(255, 255, 255, 0.18);
+  --bee-input-text: #f0f0ff;
   --bee-card-bg: rgba(255, 255, 255, 0.05);
   --bee-divider: rgba(255, 255, 255, 0.08);
   --bee-scrollbar: rgba(255, 255, 255, 0.15);
@@ -42,6 +44,7 @@
   --bee-bubble-ai: rgba(0, 0, 0, 0.05);
   --bee-input-bg: rgba(0, 0, 0, 0.04);
   --bee-input-border: rgba(0, 0, 0, 0.12);
+  --bee-input-text: #1a1a2e;
   --bee-card-bg: rgba(0, 0, 0, 0.03);
   --bee-divider: rgba(0, 0, 0, 0.08);
   --bee-scrollbar: rgba(0, 0, 0, 0.12);
@@ -478,18 +481,20 @@
   border-radius: 24px;
   padding: 12px 20px;
   font-size: 14px;
-  color: var(--bee-text);
+  color: var(--bee-input-text, var(--bee-text));
   outline: none;
   transition: border-color 0.2s, background 0.2s;
 }
 
 .bee-input::placeholder {
   color: var(--bee-text-secondary);
+  opacity: 0.7;
 }
 
 .bee-input:focus {
   border-color: #667eea;
-  background: rgba(102, 126, 234, 0.06);
+  background: rgba(102, 126, 234, 0.1);
+  color: var(--bee-input-text, var(--bee-text));
 }
 
 .bee-input:disabled {
@@ -568,7 +573,7 @@
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 14px;
-  color: var(--bee-text);
+  color: var(--bee-input-text, var(--bee-text));
   outline: none;
   transition: border-color 0.2s;
   box-sizing: border-box;
@@ -577,10 +582,12 @@
 .bee-settings-input:focus,
 .bee-settings-select:focus {
   border-color: #667eea;
+  background: rgba(102, 126, 234, 0.08);
 }
 
 .bee-settings-input::placeholder {
   color: var(--bee-text-secondary);
+  opacity: 0.7;
 }
 
 .bee-settings-row {
