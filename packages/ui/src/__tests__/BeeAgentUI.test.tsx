@@ -447,8 +447,8 @@ describe('BeeAgentUI', () => {
         fireEvent.click(themeButton)
       })
 
-      const sidebar = container.querySelector('.bee-sidebar')
-      expect(sidebar?.getAttribute('data-theme')).toBe('light')
+      const themeRoot = container.querySelector('[data-theme]')
+      expect(themeRoot?.getAttribute('data-theme')).toBe('light')
     })
 
     it('主题应该持久化到 localStorage', async () => {
