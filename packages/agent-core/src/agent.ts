@@ -178,75 +178,74 @@ export class BeeAgent extends EventTarget {
           // 解析 reflection 结果
           const reflection = this.parseReflection(thought)
 
-          // === Act: 执行工具调用 ===
-          if (result.toolCalls.length === 0) {
-            // LLM 没有返回工具调用，记录为错误步骤但继续
-            consecutiveErrors++
-            const step: AgentStep = {
-              index: stepIndex,
-              observation,
-              thought,
-              action: { name: 'none', input: {}, output: '' },
-              timestamp: Date.now(),
-              evaluation: reflection?.evaluation,
-              memory: reflection?.memory,
-              nextGoal: reflection?.nextGoal,
-              error: 'LLM did not provide any tool call'
-            }
-            this.steps.push(step)
-
-            this.dispatchEvent(
-              new CustomEvent('step', {
-                detail: { type: 'error', stepIndex, error: 'No action provided by LLM' }
-              })
-            )
-
-            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-              this.setStatus('error')
-              return {
-                success: false,
-                message: `Agent stopped after ${MAX_CONSECUTIVE_ERRORS} consecutive errors: LLM did not provide tool calls`,
-                steps: this.steps
-              }
-            }
-            continue
-          }
-
-          const toolCall = result.toolCalls[0]
-          const toolName = toolCall.function.name
-
-          // 安全解析工具参数
+          // === Act: 解析并执行操作 ===
+          // 支持两种模式：
+          // 1. LLM 通过 tool_calls 返回操作（标准 function calling）
+          // 2. LLM 在 content 中返回 JSON（含 action 字段）
+          let toolName: string
           let toolInput: ToolInput
-          try {
-            toolInput = JSON.parse(toolCall.function.arguments) as ToolInput
-          } catch (parseError) {
-            consecutiveErrors++
-            const step: AgentStep = {
-              index: stepIndex,
-              observation,
-              thought,
-              action: { name: toolName, input: {}, output: '' },
-              timestamp: Date.now(),
-              evaluation: reflection?.evaluation,
-              error: `Failed to parse tool arguments: ${toolCall.function.arguments}`
-            }
-            this.steps.push(step)
 
-            this.dispatchEvent(
-              new CustomEvent('step', {
-                detail: { type: 'error', stepIndex, error: `JSON parse error for ${toolName} arguments` }
-              })
-            )
-
-            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-              this.setStatus('error')
-              return {
-                success: false,
-                message: `Agent stopped after ${MAX_CONSECUTIVE_ERRORS} consecutive JSON parse errors`,
-                steps: this.steps
+          if (result.toolCalls.length > 0) {
+            // 模式1: 标准 tool_calls
+            const toolCall = result.toolCalls[0]
+            toolName = toolCall.function.name
+            try {
+              toolInput = JSON.parse(toolCall.function.arguments) as ToolInput
+            } catch (parseError) {
+              consecutiveErrors++
+              const step: AgentStep = {
+                index: stepIndex,
+                observation,
+                thought,
+                action: { name: toolCall.function.name, input: {}, output: '' },
+                timestamp: Date.now(),
+                evaluation: reflection?.evaluation,
+                error: `Failed to parse tool arguments: ${toolCall.function.arguments}`
               }
+              this.steps.push(step)
+              this.dispatchEvent(
+                new CustomEvent('step', {
+                  detail: { type: 'error', stepIndex, error: `JSON parse error for ${toolCall.function.name} arguments` }
+                })
+              )
+              if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                this.setStatus('error')
+                return { success: false, message: `Agent stopped after ${MAX_CONSECUTIVE_ERRORS} consecutive JSON parse errors`, steps: this.steps }
+              }
+              continue
             }
-            continue
+          } else {
+            // 模式2: 从 content JSON 中提取 action
+            const parsed = this.parseContentAction(thought)
+            if (parsed) {
+              toolName = parsed.name
+              toolInput = parsed.input
+            } else {
+              // 两种模式都没有，记录错误
+              consecutiveErrors++
+              const step: AgentStep = {
+                index: stepIndex,
+                observation,
+                thought,
+                action: { name: 'none', input: {}, output: '' },
+                timestamp: Date.now(),
+                evaluation: reflection?.evaluation,
+                memory: reflection?.memory,
+                nextGoal: reflection?.nextGoal,
+                error: 'LLM did not provide any tool call or action in content'
+              }
+              this.steps.push(step)
+              this.dispatchEvent(
+                new CustomEvent('step', {
+                  detail: { type: 'error', stepIndex, error: 'No action provided by LLM' }
+                })
+              )
+              if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                this.setStatus('error')
+                return { success: false, message: `Agent stopped after ${MAX_CONSECUTIVE_ERRORS} consecutive errors: LLM did not provide tool calls`, steps: this.steps }
+              }
+              continue
+            }
           }
 
           // 查找工具
@@ -510,6 +509,40 @@ export class BeeAgent extends EventTarget {
     prompt += '}'
 
     return prompt
+  }
+
+  /**
+   * 从 LLM content 中的 JSON 解析 action
+   * @description 支持 LLM 不使用 tool_calls 而是在 content 中返回 JSON 格式的操作
+   * 例如: { "action": { "scroll": { "direction": "up", "pages": 0.7 } } }
+   * 或: { "action": { "click": { "index": 5 } } }
+   * 或: { "action": { "done": { "success": true, "message": "..." } } }
+   */
+  private parseContentAction(content: string): { name: string; input: ToolInput } | null {
+    try {
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) return null
+
+      const parsed = JSON.parse(jsonMatch[0])
+      const action = parsed.action
+      if (!action || typeof action !== 'object') return null
+
+      // action 格式: { "tool_name": { param1: val1, ... } }
+      const actionKeys = Object.keys(action)
+      if (actionKeys.length === 0) return null
+
+      const toolName = actionKeys[0]
+      const toolParams = action[toolName]
+
+      // 参数可以是对象或基本类型
+      const input = typeof toolParams === 'object' && toolParams !== null
+        ? toolParams as ToolInput
+        : {} as ToolInput
+
+      return { name: toolName, input }
+    } catch {
+      return null
+    }
   }
 
   /**
