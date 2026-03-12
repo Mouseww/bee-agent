@@ -250,8 +250,8 @@ describe('Agent Tools', () => {
       const waitTool = tools.find(t => t.name === 'wait')!
 
       expect(waitTool.parameters.properties).toHaveProperty('seconds')
-      expect(waitTool.parameters.properties.seconds).toHaveProperty('minimum', 1)
-      expect(waitTool.parameters.properties.seconds).toHaveProperty('maximum', 10)
+      expect((waitTool.parameters.properties as any).seconds).toHaveProperty('minimum', 1)
+      expect((waitTool.parameters.properties as any).seconds).toHaveProperty('maximum', 10)
       expect(waitTool.parameters.required).toContain('seconds')
     })
   })
