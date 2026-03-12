@@ -20,6 +20,7 @@
 
 import { DOMEngine } from '@bee-agent/dom-engine'
 import { LLMClient } from '@bee-agent/llm-client'
+import type { Message } from '@bee-agent/llm-client'
 import type { AgentConfig, AgentStatus, AgentStep, ExecutionResult, AgentMemory, ReflectionResult, ToolInput } from './types'
 import { createTools } from './tools'
 import systemPromptRaw from './prompts/system_prompt.md?raw'
@@ -125,6 +126,21 @@ export class BeeAgent extends EventTarget {
     const tools = createTools(this.domEngine, { onAskUser: this.config.onAskUser })
     let consecutiveErrors = 0
 
+    // 构建 LLM 工具定义（贯穿整个任务生命周期）
+    const llmTools = tools.map(tool => ({
+      type: 'function' as const,
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters
+      }
+    }))
+
+    // 维护完整的消息链，贯穿整个任务生命周期
+    const messages: Message[] = [
+      { role: 'system' as const, content: this.config.systemPrompt }
+    ]
+
     try {
       for (let stepIndex = 0; stepIndex < this.config.maxSteps; stepIndex++) {
         // 检查是否中止
@@ -143,23 +159,9 @@ export class BeeAgent extends EventTarget {
             })
           )
 
-          // === Think: 调用 LLM ===
-          const messages = [
-            { role: 'system' as const, content: this.config.systemPrompt },
-            {
-              role: 'user' as const,
-              content: this.buildPrompt(task, stepIndex, observation)
-            }
-          ]
-
-          const llmTools = tools.map(tool => ({
-            type: 'function' as const,
-            function: {
-              name: tool.name,
-              description: tool.description,
-              parameters: tool.parameters
-            }
-          }))
+          // === Think: 构建用户消息并调用 LLM ===
+          const userContent = this.buildPrompt(task, stepIndex, observation)
+          messages.push({ role: 'user' as const, content: userContent })
 
           this.dispatchEvent(
             new CustomEvent('step', {
@@ -189,10 +191,26 @@ export class BeeAgent extends EventTarget {
             // 模式1: 标准 tool_calls
             const toolCall = result.toolCalls[0]
             toolName = toolCall.function.name
+
+            // 追加 assistant 消息（含 tool_calls）到消息链
+            messages.push({
+              role: 'assistant' as const,
+              content: result.content,
+              tool_calls: result.toolCalls
+            })
+
             try {
               toolInput = JSON.parse(toolCall.function.arguments) as ToolInput
             } catch (parseError) {
               consecutiveErrors++
+
+              // 追加 tool result 报错到消息链
+              messages.push({
+                role: 'tool' as const,
+                tool_call_id: toolCall.id,
+                content: `Error: Failed to parse tool arguments: ${toolCall.function.arguments}`
+              })
+
               const step: AgentStep = {
                 index: stepIndex,
                 observation,
@@ -217,6 +235,13 @@ export class BeeAgent extends EventTarget {
           } else {
             // 模式2: 从 content JSON 中提取 action
             const parsed = this.parseContentAction(thought)
+
+            // 追加 assistant 消息（无 tool_calls）到消息链
+            messages.push({
+              role: 'assistant' as const,
+              content: thought
+            })
+
             if (parsed) {
               toolName = parsed.name
               toolInput = parsed.input
@@ -252,6 +277,16 @@ export class BeeAgent extends EventTarget {
           const tool = tools.find(t => t.name === toolName)
           if (!tool) {
             consecutiveErrors++
+
+            // 如果是 tool_calls 模式，追加 tool result 报错
+            if (result.toolCalls.length > 0) {
+              messages.push({
+                role: 'tool' as const,
+                tool_call_id: result.toolCalls[0].id,
+                content: `Error: Unknown tool: ${toolName}. Available tools: ${tools.map(t => t.name).join(', ')}`
+              })
+            }
+
             const step: AgentStep = {
               index: stepIndex,
               observation,
@@ -308,6 +343,22 @@ export class BeeAgent extends EventTarget {
                 detail: { type: 'error', stepIndex, error: `Tool execution error: ${errorMessage}` }
               })
             )
+          }
+
+          // 追加 tool result 到消息链
+          if (result.toolCalls.length > 0) {
+            // tool_calls 模式：用 role: 'tool' + tool_call_id
+            messages.push({
+              role: 'tool' as const,
+              tool_call_id: result.toolCalls[0].id,
+              content: output
+            })
+          } else {
+            // content JSON 模式：把工具执行结果作为 user 消息追加
+            messages.push({
+              role: 'user' as const,
+              content: `[Tool Result] ${toolName}: ${output}`
+            })
           }
 
           // 成功执行，重置连续错误计数
@@ -460,34 +511,16 @@ export class BeeAgent extends EventTarget {
    * @returns 完整的用户提示词
    */
   private buildPrompt(task: string, stepIndex: number, observation: string): string {
-    let prompt = `<user_request>\n${task}\n</user_request>\n\n`
+    let prompt = ''
+
+    // 首轮消息包含任务描述
+    if (stepIndex === 0) {
+      prompt += `<user_request>\n${task}\n</user_request>\n\n`
+    }
 
     prompt += `<agent_state>\n`
     prompt += `Step ${stepIndex + 1} of ${this.config.maxSteps}\n`
     prompt += `</agent_state>\n\n`
-
-    // 添加历史步骤（最近 5 步，包含 reflection 和错误信息）
-    if (this.steps.length > 0) {
-      prompt += '<agent_history>\n'
-      for (const step of this.steps.slice(-5)) {
-        prompt += `<step_${step.index + 1}>\n`
-        if (step.evaluation) {
-          prompt += `Evaluation of Previous Step: ${step.evaluation}\n`
-        }
-        if (step.memory) {
-          prompt += `Memory: ${step.memory}\n`
-        }
-        if (step.nextGoal) {
-          prompt += `Next Goal: ${step.nextGoal}\n`
-        }
-        if (step.error) {
-          prompt += `Error: ${step.error}\n`
-        }
-        prompt += `Action Results: ${step.action.name}(${JSON.stringify(step.action.input)}) -> ${step.action.output}\n`
-        prompt += `</step_${step.index + 1}>\n\n`
-      }
-      prompt += '</agent_history>\n\n'
-    }
 
     // 添加累积记忆
     if (this.memory.content.length > 0) {

@@ -18,6 +18,8 @@ export default defineConfig({
         globals: {}
       }
     },
+    // CSS 内联到 JS 中，不生成单独的 CSS 文件
+    cssCodeSplit: false,
     minify: true,
     sourcemap: false
   }
