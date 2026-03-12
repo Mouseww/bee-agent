@@ -17,6 +17,33 @@ function triggerEvents(element: Element, eventType: string): void {
 }
 
 /**
+ * 使用 React 兼容方式设置 input/textarea 的值
+ * @description React 使用内部 value tracker 追踪输入框的值。
+ * 直接设置 element.value 不会触发 React 的 onChange，
+ * 因为 React 比较的是 tracker 中缓存的旧值。
+ * 解决方法：用原始的 HTMLInputElement.prototype.value setter 设值，
+ * 绕过 React 的 tracker 劫持，然后派发原生 input 事件。
+ */
+function setNativeValue(element: HTMLInputElement | HTMLTextAreaElement, value: string): void {
+  // 获取原始的 value setter（React 劫持前的）
+  const prototype = element instanceof HTMLTextAreaElement
+    ? HTMLTextAreaElement.prototype
+    : HTMLInputElement.prototype
+  const nativeSetter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set
+
+  if (nativeSetter) {
+    nativeSetter.call(element, value)
+  } else {
+    // 兜底：直接赋值
+    element.value = value
+  }
+
+  // 派发 input 事件（React 16+ 监听的是这个）
+  const inputEvent = new Event('input', { bubbles: true, cancelable: true })
+  element.dispatchEvent(inputEvent)
+}
+
+/**
  * 创建可中止的延迟 Promise
  * @param ms - 延迟毫秒数
  * @returns Promise
@@ -50,7 +77,8 @@ export async function clickElement(element: Element): Promise<void> {
 
 /**
  * 输入文本到表单元素
- * @description 支持 input、textarea 和 contenteditable 元素
+ * @description 支持 input、textarea 和 contenteditable 元素。
+ * 对 React 受控组件使用 nativeSetter 绕过 value tracker 劫持。
  * @param element - 目标元素
  * @param text - 要输入的文本
  * @throws {Error} 元素不支持文本输入时抛出
@@ -78,23 +106,38 @@ export async function inputText(element: Element, text: string): Promise<void> {
     throw new Error('Element is not an input, textarea, or contenteditable')
   }
 
-  // 聚焦元素
+  // 滚动到元素并聚焦
+  element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  await delay(200)
   element.focus()
+  triggerEvents(element, 'focus')
+  triggerEvents(element, 'focusin')
   await delay(100)
 
-  // 清空现有内容
-  element.value = ''
-  triggerEvents(element, 'input')
+  // 清空现有内容（React 兼容方式）
+  setNativeValue(element, '')
+  await delay(50)
 
-  // 逐字输入（模拟真实输入行为）
+  // 逐字输入（模拟真实输入 + React 兼容）
   for (const char of text) {
-    element.value += char
-    triggerEvents(element, 'input')
+    // 模拟 keydown
+    element.dispatchEvent(new KeyboardEvent('keydown', {
+      key: char, code: `Key${char.toUpperCase()}`, bubbles: true, cancelable: true
+    }))
+
+    // 使用 nativeSetter 设值（绕过 React tracker）
+    setNativeValue(element, element.value + char)
+
+    // 模拟 keyup
+    element.dispatchEvent(new KeyboardEvent('keyup', {
+      key: char, code: `Key${char.toUpperCase()}`, bubbles: true, cancelable: true
+    }))
+
     await delay(30)
   }
 
+  // 最后触发 change（一些框架依赖 blur 时的 change）
   triggerEvents(element, 'change')
-  element.blur()
 }
 
 /**
