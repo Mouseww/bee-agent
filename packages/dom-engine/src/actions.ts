@@ -114,19 +114,27 @@ export async function inputText(element: Element, text: string): Promise<void> {
   triggerEvents(element, 'focusin')
   await delay(100)
 
-  // 清空现有内容（React 兼容方式）
+  // 清空现有内容（React/Vue 兼容方式）
   setNativeValue(element, '')
   await delay(50)
 
-  // 逐字输入（模拟真实输入 + React 兼容）
+  // 触发 compositionstart（兼容 Vue 中文输入法模式 + Element UI 等组件库）
+  element.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }))
+
+  // 逐字输入（模拟真实输入 + React/Vue 兼容）
   for (const char of text) {
     // 模拟 keydown
     element.dispatchEvent(new KeyboardEvent('keydown', {
       key: char, code: `Key${char.toUpperCase()}`, bubbles: true, cancelable: true
     }))
 
-    // 使用 nativeSetter 设值（绕过 React tracker）
+    // 使用 nativeSetter 设值（绕过 React tracker，Vue 也兼容）
     setNativeValue(element, element.value + char)
+
+    // compositionupdate（Vue v-model.lazy 等场景）
+    element.dispatchEvent(new CompositionEvent('compositionupdate', {
+      bubbles: true, data: element.value
+    }))
 
     // 模拟 keyup
     element.dispatchEvent(new KeyboardEvent('keyup', {
@@ -135,6 +143,14 @@ export async function inputText(element: Element, text: string): Promise<void> {
 
     await delay(30)
   }
+
+  // compositionend（Vue 在此时才真正更新 v-model 绑定值）
+  element.dispatchEvent(new CompositionEvent('compositionend', {
+    bubbles: true, data: element.value
+  }))
+
+  // 再派发一次 input，确保所有框架都能拿到最终值
+  setNativeValue(element, element.value)
 
   // 最后触发 change（一些框架依赖 blur 时的 change）
   triggerEvents(element, 'change')
