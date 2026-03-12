@@ -438,24 +438,24 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
       {/* ── 侧边栏 ── */}
       <div className={`bee-sidebar ${isOpen ? 'bee-sidebar-open' : ''}`}>
         {/* 顶栏 */}
-        <div className="bee-header">
-          <div className="bee-header-left">
-            <span className="bee-logo">🐝</span>
-            <span className="bee-title">BeeAgent</span>
+        <div className="bee-topbar">
+          <div className="bee-topbar-left">
+            <span className="bee-topbar-logo">🐝</span>
+            <span className="bee-topbar-title">BeeAgent</span>
             <span
               className="bee-status-dot"
               style={{ backgroundColor: statusColor }}
               title={statusText}
             />
           </div>
-          <div className="bee-header-right">
-            <button className="bee-header-btn" onClick={() => setShowSettings(!showSettings)} title="设置">
+          <div className="bee-topbar-right">
+            <button className="bee-topbar-btn" onClick={() => setShowSettings(!showSettings)} title="设置">
               ⚙️
             </button>
-            <button className="bee-header-btn" onClick={() => setIsDarkMode(!isDarkMode)} title="主题">
+            <button className="bee-topbar-btn" onClick={() => setIsDarkMode(!isDarkMode)} title="主题">
               {isDarkMode ? '☀️' : '🌙'}
             </button>
-            <button className="bee-header-btn" onClick={handleCloseSidebar} title="关闭">
+            <button className="bee-topbar-btn" onClick={handleCloseSidebar} title="关闭">
               ✕
             </button>
           </div>
