@@ -1,11 +1,12 @@
 /**
  * BeeAgent UI 组件 - 全面重构版
  * @module @bee-agent/ui
- * @description 悬浮图标 + 侧边栏毛玻璃设计，支持拖拽、主题切换、设置管理
+ * @description 悬浮图标 + 侧边栏毛玻璃设计，支持拖拽、主题切换、设置管理、Watch 监听模式
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import type { BeeAgent, AgentStatus, AgentStep } from '@bee-agent/agent-core'
+import type { BeeAgent, AgentStatus, AgentStep, WatchEngine, WatchConfig } from '@bee-agent/agent-core'
+import { WatchPanel } from './WatchPanel'
 import cssText from './styles.css?inline'
 
 /**
@@ -32,6 +33,9 @@ interface Message {
 
 interface BeeAgentUIProps {
   agent: BeeAgent
+  watchEngine?: WatchEngine | null
+  watchConfig?: WatchConfig | null
+  onCreateWatchEngine?: (config: WatchConfig) => WatchEngine
   onClose?: () => void
 }
 
@@ -47,6 +51,9 @@ interface ModelInfo {
   id: string
   owned_by?: string
 }
+
+/** 主 Tab 类型 */
+type MainTab = 'chat' | 'watch'
 
 /** 默认设置 */
 const DEFAULT_SETTINGS: Settings = {
@@ -102,7 +109,7 @@ function formatTime(timestamp: number): string {
   }
 }
 
-export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
+export function BeeAgentUI({ agent, watchEngine, watchConfig, onCreateWatchEngine, onClose }: BeeAgentUIProps) {
   // ── 状态 ──
   const [status, setStatus] = useState<AgentStatus>('idle')
   const [messages, setMessages] = useState<Message[]>([])
@@ -120,6 +127,7 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
   )
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([])
   const [isFetchingModels, setIsFetchingModels] = useState(false)
+  const [mainTab, setMainTab] = useState<MainTab>('chat')
 
   // ── 悬浮图标拖拽状态 ──
   const [fabPos, setFabPos] = useState({ x: window.innerWidth - 72, y: window.innerHeight - 72 })
@@ -416,6 +424,24 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
           </div>
         </div>
 
+        {/* ── 主 Tab 切换栏 ── */}
+        {!showSettings && (
+          <div className="bee-main-tabs">
+            <button
+              className={`bee-main-tab ${mainTab === 'chat' ? 'bee-main-tab-active' : ''}`}
+              onClick={() => setMainTab('chat')}
+            >
+              💬 Chat
+            </button>
+            <button
+              className={`bee-main-tab ${mainTab === 'watch' ? 'bee-main-tab-active' : ''}`}
+              onClick={() => setMainTab('watch')}
+            >
+              👁️ Watch
+            </button>
+          </div>
+        )}
+
         {/* 内容区 */}
         {showSettings ? (
           /* ── 设置面板 ── */
@@ -501,7 +527,7 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
               </button>
             </div>
           </div>
-        ) : (
+        ) : mainTab === 'chat' ? (
           <>
             {/* ── 消息区 ── */}
             <div className="bee-messages">
@@ -614,6 +640,13 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
               </form>
             </div>
           </>
+        ) : (
+          /* ── Watch 面板 ── */
+          <WatchPanel
+            watchEngine={watchEngine ?? null}
+            watchConfig={watchConfig ?? null}
+            onCreateEngine={onCreateWatchEngine}
+          />
         )}
       </div>
     </>

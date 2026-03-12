@@ -3,7 +3,7 @@
  * 可通过 bookmarklet 或直接注入到页面
  */
 
-import { BeeAgent } from '@bee-agent/agent-core'
+import { BeeAgent, WatchEngine } from '@bee-agent/agent-core'
 import { mountBeeAgentUI } from '@bee-agent/ui'
 
 // 全局命名空间
@@ -94,6 +94,7 @@ document.addEventListener('keydown', (e) => {
 
 // 导出到全局
 window.BeeAgent = BeeAgent
+;(window as unknown as Record<string, unknown>).BeeAgentWatchEngine = WatchEngine
 window.initBeeAgent = initBeeAgent
 
 // 自动初始化（如果有保存的配置）
@@ -110,4 +111,4 @@ if (savedConfig) {
   }
 }
 
-export { initBeeAgent, BeeAgent }
+export { initBeeAgent, BeeAgent, WatchEngine }

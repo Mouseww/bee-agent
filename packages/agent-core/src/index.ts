@@ -24,3 +24,4 @@
 export * from './types'
 export { BeeAgent } from './agent'
 export { createTools } from './tools'
+export * from './watch'

@@ -707,6 +707,588 @@
 }
 
 /* ════════════════════════════════════════
+   主 Tab 栏（Chat / Watch 切换）
+   ════════════════════════════════════════ */
+.bee-main-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--bee-divider);
+  flex-shrink: 0;
+  padding: 0 8px;
+}
+
+.bee-main-tab {
+  flex: 1;
+  padding: 10px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--bee-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.bee-main-tab:hover {
+  color: var(--bee-text);
+}
+
+.bee-main-tab-active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+}
+
+/* ════════════════════════════════════════
+   Watch 面板
+   ════════════════════════════════════════ */
+.bee-watch-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── 状态栏 ── */
+.bee-watch-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--bee-divider);
+  flex-shrink: 0;
+}
+
+.bee-watch-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bee-watch-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.bee-watch-status-active {
+  background: #4ade80;
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.5);
+  animation: statusPulse 1.5s ease-in-out infinite;
+}
+
+.bee-watch-status-paused {
+  background: #fbbf24;
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.5);
+}
+
+.bee-watch-status-error {
+  background: #f87171;
+  box-shadow: 0 0 6px rgba(248, 113, 113, 0.5);
+}
+
+.bee-watch-status-idle {
+  background: #6b7280;
+  box-shadow: 0 0 4px rgba(107, 114, 128, 0.3);
+}
+
+.bee-watch-status-text {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.bee-watch-uptime {
+  font-size: 11px;
+  color: var(--bee-text-secondary);
+  margin-left: 4px;
+}
+
+/* ── 引擎控制按钮 ── */
+.bee-watch-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.bee-watch-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.2s, transform 0.15s;
+}
+
+.bee-watch-btn:hover:not(:disabled) {
+  opacity: 0.85;
+  transform: scale(1.02);
+}
+
+.bee-watch-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bee-watch-btn-start {
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  color: #052e16;
+}
+
+.bee-watch-btn-pause {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #451a03;
+}
+
+.bee-watch-btn-stop {
+  background: linear-gradient(135deg, #f87171, #ef4444);
+  color: white;
+}
+
+.bee-watch-btn-add {
+  width: 100%;
+  padding: 10px;
+  background: var(--bee-input-bg);
+  border: 1px dashed var(--bee-input-border);
+  color: var(--bee-text-secondary);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.bee-watch-btn-add:hover {
+  border-color: #667eea;
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.06);
+}
+
+.bee-watch-btn-save {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  padding: 8px 20px;
+}
+
+.bee-watch-btn-cancel {
+  background: transparent;
+  border: 1px solid var(--bee-input-border);
+  color: var(--bee-text-secondary);
+  padding: 8px 20px;
+}
+
+.bee-watch-btn-cancel:hover {
+  background: var(--bee-input-bg);
+}
+
+/* ── Watch 子 Tab ── */
+.bee-watch-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--bee-divider);
+  flex-shrink: 0;
+  padding: 0 8px;
+}
+
+.bee-watch-tab {
+  flex: 1;
+  padding: 8px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--bee-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.bee-watch-tab:hover {
+  color: var(--bee-text);
+}
+
+.bee-watch-tab-active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+}
+
+/* ── 内容区域 ── */
+.bee-watch-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+
+.bee-watch-content::-webkit-scrollbar {
+  width: 5px;
+}
+
+.bee-watch-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.bee-watch-content::-webkit-scrollbar-thumb {
+  background: var(--bee-scrollbar);
+  border-radius: 3px;
+}
+
+.bee-watch-content::-webkit-scrollbar-thumb:hover {
+  background: var(--bee-scrollbar-hover);
+}
+
+/* ── 空状态 ── */
+.bee-watch-empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--bee-text-secondary);
+  font-size: 14px;
+}
+
+.bee-watch-empty p {
+  margin: 4px 0;
+}
+
+.bee-watch-hint {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+/* ── 规则卡片 ── */
+.bee-watch-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bee-watch-rule-card {
+  background: var(--bee-card-bg);
+  border-radius: 8px;
+  padding: 10px 12px;
+  transition: background 0.2s;
+}
+
+.bee-watch-rule-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="light"] .bee-watch-rule-card:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.bee-watch-rule-disabled {
+  opacity: 0.5;
+}
+
+.bee-watch-rule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bee-watch-rule-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bee-watch-rule-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.bee-watch-rule-type {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(102, 126, 234, 0.15);
+  color: #667eea;
+}
+
+.bee-watch-rule-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.bee-watch-rule-btn {
+  background: transparent;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.bee-watch-rule-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="light"] .bee-watch-rule-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.bee-watch-rule-meta {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--bee-text-secondary);
+}
+
+/* ── 添加区域 ── */
+.bee-watch-add-area {
+  margin-top: 4px;
+}
+
+/* ── 预设列表 ── */
+.bee-watch-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--bee-card-bg);
+  border-radius: 8px;
+}
+
+.bee-watch-preset-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.bee-watch-preset-item:hover {
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.bee-watch-preset-name {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.bee-watch-preset-desc {
+  font-size: 11px;
+  color: var(--bee-text-secondary);
+}
+
+/* ── 统计面板 ── */
+.bee-watch-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.bee-watch-stat-item {
+  background: var(--bee-card-bg);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bee-watch-stat-wide {
+  grid-column: 1 / -1;
+}
+
+.bee-watch-stat-label {
+  font-size: 11px;
+  color: var(--bee-text-secondary);
+  font-weight: 500;
+}
+
+.bee-watch-stat-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--bee-text);
+}
+
+.bee-watch-stat-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.bee-watch-stat-rule-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--bee-text-secondary);
+  padding: 2px 0;
+}
+
+/* ── 日志 ── */
+.bee-watch-logs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bee-watch-log-item {
+  display: flex;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.bee-watch-log-time {
+  color: var(--bee-text-secondary);
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.bee-watch-log-level {
+  flex-shrink: 0;
+  font-weight: 600;
+  width: 50px;
+  text-align: center;
+}
+
+.bee-watch-log-msg {
+  word-break: break-word;
+}
+
+.bee-watch-log-info {
+  color: var(--bee-text);
+}
+
+.bee-watch-log-info .bee-watch-log-level {
+  color: #60a5fa;
+}
+
+.bee-watch-log-warn {
+  color: var(--bee-text);
+  background: rgba(251, 191, 36, 0.05);
+}
+
+.bee-watch-log-warn .bee-watch-log-level {
+  color: #fbbf24;
+}
+
+.bee-watch-log-error {
+  color: var(--bee-text);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.bee-watch-log-error .bee-watch-log-level {
+  color: #f87171;
+}
+
+.bee-watch-log-action {
+  color: var(--bee-text);
+  background: rgba(74, 222, 128, 0.05);
+}
+
+.bee-watch-log-action .bee-watch-log-level {
+  color: #4ade80;
+}
+
+/* ── 规则编辑器弹窗 ── */
+.bee-watch-editor-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  animation: fadeIn 0.2s ease;
+}
+
+.bee-watch-editor {
+  width: 90%;
+  max-width: 340px;
+  max-height: 80%;
+  overflow-y: auto;
+  background: var(--bee-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
+}
+
+.bee-watch-editor-title {
+  margin: 0 0 16px 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.bee-watch-editor-group {
+  margin-bottom: 12px;
+}
+
+.bee-watch-editor-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--bee-text-secondary);
+}
+
+.bee-watch-editor-hint {
+  opacity: 0.6;
+  font-weight: 400;
+}
+
+.bee-watch-editor-input {
+  width: 100%;
+  background: var(--bee-input-bg);
+  border: 1px solid var(--bee-input-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--bee-text);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.bee-watch-editor-input:focus {
+  border-color: #667eea;
+}
+
+.bee-watch-editor-input::placeholder {
+  color: var(--bee-text-secondary);
+}
+
+.bee-watch-editor-textarea {
+  width: 100%;
+  background: var(--bee-input-bg);
+  border: 1px solid var(--bee-input-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--bee-text);
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.bee-watch-editor-textarea:focus {
+  border-color: #667eea;
+}
+
+.bee-watch-editor-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* ════════════════════════════════════════
    响应式
    ════════════════════════════════════════ */
 @media (max-width: 480px) {
