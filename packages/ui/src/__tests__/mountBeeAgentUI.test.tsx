@@ -72,8 +72,9 @@ describe('mountBeeAgentUI', () => {
 
       const mockedCreateRoot = vi.mocked(createRoot)
       expect(mockedCreateRoot).toHaveBeenCalledOnce()
-      const container = document.getElementById('bee-agent-ui-root')
-      expect(mockedCreateRoot).toHaveBeenCalledWith(container)
+      // Shadow DOM 模式下，createRoot 接收的是 shadow 内部的 mountPoint
+      const callArg = mockedCreateRoot.mock.calls[0][0] as HTMLElement
+      expect(callArg.id).toBe('bee-agent-shadow-root')
     })
 
     it('应该调用 root.render 渲染组件', () => {

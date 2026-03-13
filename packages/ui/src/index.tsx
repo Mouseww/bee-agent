@@ -1,7 +1,7 @@
 /**
  * BeeAgent UI
  * @module @bee-agent/ui
- * @description React 浮动界面组件，使用高优先级选择器实现样式隔离
+ * @description React 浮动界面组件，使用 Shadow DOM 实现样式隔离
  *
  * @example
  * ```ts
@@ -26,19 +26,8 @@ import cssText from './styles.css?inline'
 export { BeeAgentUI } from './BeeAgentUI'
 
 /**
- * 注入 CSS 到页面 <head>（如果尚未注入）
- */
-function injectStyles(): void {
-  if (document.getElementById('bee-agent-styles')) return
-  const style = document.createElement('style')
-  style.id = 'bee-agent-styles'
-  style.textContent = cssText
-  document.head.appendChild(style)
-}
-
-/**
- * 挂载 BeeAgent UI 到页面
- * @description 使用独立容器 + bee-agent- 前缀 + all:initial 重置实现样式隔离
+ * 挂载 BeeAgent UI 到页面（Shadow DOM 隔离）
+ * @description 创建 Shadow DOM 容器，完全隔离宿主页面样式，防止互相干扰
  * @param agent - BeeAgent 实例
  * @returns 卸载函数，调用后移除 UI
  */
@@ -49,23 +38,35 @@ export function mountBeeAgentUI(agent: BeeAgent): () => void {
     existing.remove()
   }
 
-  // 注入样式
-  injectStyles()
+  // 创建宿主容器
+  const host = document.createElement('div')
+  host.id = 'bee-agent-ui-root'
+  // 确保宿主容器不受页面样式影响
+  host.style.cssText = 'all: initial; position: fixed; z-index: 2147483647; top: 0; left: 0; width: 0; height: 0;'
+  document.body.appendChild(host)
 
-  // 创建容器
-  const container = document.createElement('div')
-  container.id = 'bee-agent-ui-root'
-  document.body.appendChild(container)
+  // 创建 Shadow DOM
+  const shadow = host.attachShadow({ mode: 'open' })
+
+  // 注入样式到 Shadow DOM 内部
+  const style = document.createElement('style')
+  style.textContent = cssText
+  shadow.appendChild(style)
+
+  // 创建 React 挂载点
+  const mountPoint = document.createElement('div')
+  mountPoint.id = 'bee-agent-shadow-root'
+  shadow.appendChild(mountPoint)
 
   // 渲染组件
-  let root: Root | null = createRoot(container)
+  let root: Root | null = createRoot(mountPoint)
 
   const handleClose = () => {
     if (root) {
       root.unmount()
       root = null
     }
-    container.remove()
+    host.remove()
   }
 
   root.render(
