@@ -1,12 +1,31 @@
 /**
  * BeeAgent UI 样式 - 全面重构版
  * 悬浮图标 + 侧边栏毛玻璃设计
+ * 使用 #bee-agent-ui-root 高优先级选择器 + !important 实现样式隔离
  */
+
+/* ════════════════════════════════════════
+   容器重置 — 防止宿主页面样式污染
+   ════════════════════════════════════════ */
+#bee-agent-ui-root {
+  all: initial !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  color: var(--bee-text) !important;
+  -webkit-font-smoothing: antialiased !important;
+}
+
+#bee-agent-ui-root *, #bee-agent-ui-root *::before, #bee-agent-ui-root *::after {
+  box-sizing: border-box !important;
+  margin: 0;
+  padding: 0;
+}
 
 /* ════════════════════════════════════════
    CSS 变量 - 暗色主题（默认）
    ════════════════════════════════════════ */
-:host, :root {
+#bee-agent-ui-root {
   --bee-bg: rgba(15, 15, 25, 0.88);
   --bee-text: #e8e8f0;
   --bee-text-secondary: rgba(255, 255, 255, 0.6);
@@ -21,7 +40,7 @@
   --bee-scrollbar-hover: rgba(255, 255, 255, 0.25);
 }
 
-[data-theme="dark"] {
+#bee-agent-ui-root [data-theme="dark"] {
   --bee-bg: rgba(15, 15, 25, 0.88);
   --bee-text: #e8e8f0;
   --bee-text-secondary: rgba(255, 255, 255, 0.6);
@@ -36,7 +55,7 @@
   --bee-scrollbar-hover: rgba(255, 255, 255, 0.25);
 }
 
-[data-theme="light"] {
+#bee-agent-ui-root [data-theme="light"] {
   --bee-bg: rgba(250, 250, 255, 0.92);
   --bee-text: #1a1a2e;
   --bee-text-secondary: rgba(0, 0, 0, 0.5);
