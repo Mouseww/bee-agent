@@ -74,6 +74,7 @@
    悬浮图标 FAB
    ════════════════════════════════════════ */
 .bee-fab {
+  all: unset;
   position: fixed;
   width: 52px;
   height: 52px;
@@ -88,6 +89,7 @@
   z-index: 999998;
   user-select: none;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
 }
 
 .bee-fab:hover {
@@ -409,6 +411,7 @@
 
 /* 步骤图标 */
 .bee-timeline-icon {
+  all: unset;
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -421,6 +424,8 @@
   cursor: pointer;
   z-index: 1;
   transition: background 0.2s;
+  box-sizing: border-box;
+  color: var(--bee-text);
 }
 
 .bee-timeline-icon:hover {
@@ -429,12 +434,19 @@
 
 /* 步骤卡片 */
 .bee-timeline-card {
+  all: unset;
   flex: 1;
   background: var(--bee-card-bg);
   border-radius: 8px;
   padding: 10px 12px;
   cursor: pointer;
   transition: background 0.2s;
+  box-sizing: border-box;
+  text-align: left;
+  color: var(--bee-text);
+  font: inherit;
+  display: block;
+  width: 100%;
 }
 
 .bee-timeline-card:hover {
@@ -1113,6 +1125,7 @@
 }
 
 .bee-watch-preset-item {
+  all: unset;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1120,6 +1133,11 @@
   border-radius: 6px;
   cursor: pointer;
   transition: background 0.2s;
+  box-sizing: border-box;
+  width: 100%;
+  text-align: left;
+  color: var(--bee-text);
+  font: inherit;
 }
 
 .bee-watch-preset-item:hover {

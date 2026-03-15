@@ -372,13 +372,13 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
       {stepsToRender.map(step => (
         <div key={step.index} className="bee-timeline-item">
           <div className="bee-timeline-line" />
-          <div
+          <button
             className="bee-timeline-icon"
             onClick={() => toggleStep(step.index)}
           >
             {getStepIcon(step)}
-          </div>
-          <div
+          </button>
+          <button
             className={`bee-timeline-card ${expandedSteps.has(step.index) ? 'bee-timeline-card-expanded' : ''}`}
             onClick={() => toggleStep(step.index)}
           >
@@ -411,7 +411,7 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
                 )}
               </div>
             )}
-          </div>
+          </button>
         </div>
       ))}
     </div>
@@ -425,14 +425,14 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
     <div data-theme={isDarkMode ? 'dark' : 'light'}>
       {/* ── 悬浮图标 ── */}
       {!isOpen && (
-        <div
+        <button
           className="bee-fab"
           onMouseDown={handleFabMouseDown}
           onClick={handleFabClick}
           style={{ left: `${fabPos.x}px`, top: `${fabPos.y}px` }}
         >
           🐝
-        </div>
+        </button>
       )}
 
       {/* ── 侧边栏 ── */}

@@ -339,14 +339,14 @@ export function WatchPanel({ watchEngine, watchConfig, onCreateEngine }: WatchPa
             {showPresets && (
               <div className="bee-watch-presets">
                 {WATCH_PRESETS.map(preset => (
-                  <div
+                  <button
                     key={preset.key}
                     className="bee-watch-preset-item"
                     onClick={() => handleAddPreset(preset.key)}
                   >
                     <span className="bee-watch-preset-name">{preset.name}</span>
                     <span className="bee-watch-preset-desc">{preset.description}</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
