@@ -116,7 +116,7 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
   const [mainTab, setMainTab] = useState<MainTab>('chat')
 
   // 拖拽状态
-  const [fabPos, setFabPos] = useState({ x: -1, y: -1 })
+  const [fabPos, setFabPos] = useState<{ x: number; y: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [wasDragged, setWasDragged] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
@@ -197,12 +197,7 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isOpen])
 
-  // ── FAB 初始位置 ──
-  useEffect(() => {
-    if (fabPos.x < 0) {
-      setFabPos({ x: window.innerWidth - 70, y: window.innerHeight - 70 })
-    }
-  }, [fabPos.x])
+  // ── FAB 初始位置由 CSS right/bottom 控制，拖拽后切换为 left/top ──
 
   // ── 拖拽逻辑 ──
   useEffect(() => {
@@ -240,6 +235,11 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
     setIsDragging(true)
     setWasDragged(false)
     setDragStart({ x: e.clientX, y: e.clientY })
+    // 如果还没被拖拽过，记录当前按钮位置
+    if (!fabPos) {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+      setFabPos({ x: rect.left, y: rect.top })
+    }
   }
 
   const handleFabClick = () => {
@@ -429,7 +429,10 @@ export function BeeAgentUI({ agent, onClose }: BeeAgentUIProps) {
           className="bee-fab"
           onMouseDown={handleFabMouseDown}
           onClick={handleFabClick}
-          style={{ left: `${fabPos.x}px`, top: `${fabPos.y}px` }}
+          style={fabPos
+            ? { left: `${fabPos.x}px`, top: `${fabPos.y}px` }
+            : { right: '20px', bottom: '20px' }
+          }
         >
           🐝
         </button>
